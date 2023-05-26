@@ -27,13 +27,13 @@ pip install -r requirements.txt
 
 dataset='pimpo'  # 'uk-leftright-econ', 'pimpo'
 task="pimpo-simple"  # "uk-leftright-simple", "pimpo"
-method='nli_void'  # standard_dl, nli, nli_long, nli_void
-model='transformer'
+method='generation'  # standard_dl, nli, nli_long, nli_void, generation
+model='google/flan-t5-base'  # "MoritzLaurer/DeBERTa-v3-base-mnli-fever-docnli-ling-2c", "google/flan-t5-small"
 vectorizer='transformer'
-group_lst=("randomall")  # ("random2") ("random3") ("randomall") ("nld" "esp" "dnk" "deu") ("CHR" "LEF" "LIB" "NAT" "SOC")
+group_lst=("random1")  # ("random1") ("random2") ("random3") ("randomall") ("nld" "esp" "dnk" "deu") ("CHR" "LEF" "LIB" "NAT" "SOC")
 study_date=20230427
 sample_size=500
-n_iterations_max=3
+n_iterations_max=5
 #n_tokens_remove_lst=(0 5 10)
 max_length=512
 

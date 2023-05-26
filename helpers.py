@@ -2,14 +2,16 @@
 ## seems like I need to import all libraries here too even though the entire script is never run
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from transformers import AutoTokenizer, AutoModelForSequenceClassification, AutoConfig, AutoModelForNextSentencePrediction
+from transformers import Trainer, AutoTokenizer, AutoModelForSequenceClassification, AutoConfig, AutoModelForNextSentencePrediction, TrainingArguments
+from transformers import T5ForConditionalGeneration, Seq2SeqTrainingArguments, DataCollatorForSeq2Seq, Seq2SeqTrainer, GenerationConfig, AutoModelForSeq2SeqLM
 import torch
 import datasets
 import copy
 import numpy as np
 import ast
+import tqdm
 
-np.random.seed(42)
+#np.random.seed(42)
 
 
 
@@ -99,7 +101,8 @@ def data_preparation(random_seed=42, hypothesis_template=None, hypo_label_dic=No
 
 
 
-def load_model_tokenizer(model_name=None, method=None, label_text_alphabetical=None, model_max_length=512):
+def load_model_tokenizer(model_name=None, method=None, label_text_alphabetical=None, model_max_length=512,
+                         model_params=None, config_params=None):
     if "nli" in method:
         tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True, model_max_length=model_max_length);
         model = AutoModelForSequenceClassification.from_pretrained(model_name); 
@@ -114,6 +117,12 @@ def load_model_tokenizer(model_name=None, method=None, label_text_alphabetical=N
         config = AutoConfig.from_pretrained(model_name, label2id=label2id, id2label=id2label, num_labels=len(label2id));
         # load model with config
         model = AutoModelForSequenceClassification.from_pretrained(model_name, config=config, ignore_mismatched_sizes=True);
+    elif method == "generation":
+        tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True, model_max_length=model_max_length);
+        model = AutoModelForSeq2SeqLM.from_pretrained(model_name, **model_params);
+        generation_config = GenerationConfig.from_pretrained(model_name, **config_params)
+        model.generation_config = generation_config
+
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"Device: {device}")
@@ -125,7 +134,7 @@ def load_model_tokenizer(model_name=None, method=None, label_text_alphabetical=N
 
 
 ### create HF datasets and tokenize data
-def tokenize_datasets(df_train_samp=None, df_test=None, tokenizer=None, method=None, max_length=None, reverse=False):
+def tokenize_datasets(df_train_samp=None, df_test=None, tokenizer=None, method=None, max_length=None, config_params=None):
     # train, val, test all in one datasetdict:
     dataset = datasets.DatasetDict({"train": datasets.Dataset.from_pandas(df_train_samp),
                                     "test": datasets.Dataset.from_pandas(df_test)})
@@ -139,18 +148,31 @@ def tokenize_datasets(df_train_samp=None, df_test=None, tokenizer=None, method=N
     def tokenize_func_mono(examples):
         return tokenizer(examples["text_prepared"], truncation=True, max_length=max_length)  # max_length=512,  padding=True
 
-    # to test NSP-reverse or NLI-reverse order to text pair
-    #if reverse == True:
-    #    def tokenize_func_nli(examples):
-    #        return tokenizer(examples["hypothesis"], examples["text_prepared"], truncation=True, max_length=max_length)  # max_length=512,  padding=True
+    def tokenize_func_generation(examples):
+        # two separate tokenization steps to deal with fact that labels are also input text / count towards max token limit
+        model_inputs = tokenizer(
+            examples["text_prepared"], max_length=max_length - config_params["max_new_tokens"], truncation=True, return_tensors="pt", padding=True
+        )
+        labels = tokenizer(
+            examples["label_text"], max_length=config_params["max_new_tokens"], truncation=True, return_tensors="pt", padding=True
+        )
+        model_inputs["labels"] = labels["input_ids"]
+        return model_inputs
+
 
     if ("nli" in method) or (method == "nsp"):
         encoded_dataset["train"] = dataset["train"].map(tokenize_func_nli, batched=True)  # batch_size=len(df_train)
         encoded_dataset["test"] = dataset["test"].map(tokenize_func_nli, batched=True)  # batch_size=len(df_train)
-
-    if method == "standard_dl":
+    elif method == "standard_dl":
         encoded_dataset["train"] = dataset["train"].map(tokenize_func_mono, batched=True)  # batch_size=len(df_train)
         encoded_dataset["test"] = dataset["test"].map(tokenize_func_mono, batched=True)  # batch_size=len(df_train)
+    elif "generation" in method:
+        encoded_dataset["train"] = dataset["train"].map(tokenize_func_generation, batched=True)
+        encoded_dataset["test"] = dataset["test"].map(tokenize_func_generation, batched=True)
+        # remove unnecessary columns, otherwise trainer will throw error
+        encoded_dataset["train"] = encoded_dataset["train"].remove_columns([col_name for col_name in encoded_dataset.column_names["train"] if col_name not in ['input_ids', 'attention_mask', 'labels']])
+        encoded_dataset["test"] = encoded_dataset["test"].remove_columns([col_name for col_name in encoded_dataset.column_names["train"] if col_name not in ['input_ids', 'attention_mask', 'labels']])
+
 
     return encoded_dataset
 
@@ -283,66 +305,165 @@ def compute_metrics_classical_ml(label_pred, label_gold, label_text_alphabetical
     return metrics
 
 
+def compute_metrics_generation(dataset=None, model=None, tokenizer=None, hyperparams_dic=None, config_params=None):
+    # function copied and adapted from ActiveLLM, so contains some unnecessary code
+    clean_memory()
+
+    # get true labels
+    #labels_gold = dataset["label_text"].tolist()
+    labels_gold = tokenizer.batch_decode(dataset["test"]["labels"], skip_special_tokens=True)
+
+    # convert pre-tokenized inputs to correct tensor format for inference
+    inputs = {key: torch.tensor(value, dtype=torch.long).to(model.device) for key, value in dataset["test"].to_dict().items() if key in ["input_ids", "attention_mask", "token_type_ids"]}
+
+    # dataloader for batched inference on pre-tokenized inputs to avoid memory issues
+    from torch.utils.data import Dataset, DataLoader
+    class TokenizedTextDataset(Dataset):
+        def __init__(self, tokenized_inputs):
+            self.tokenized_inputs = tokenized_inputs
+
+        def __len__(self):
+            return len(self.tokenized_inputs["input_ids"])
+
+        def __getitem__(self, idx):
+            item = {key: value[idx] for key, value in self.tokenized_inputs.items()}
+            return item
+
+    dataset_inputs = TokenizedTextDataset(inputs)
+    dataloader = DataLoader(dataset_inputs, batch_size=hyperparams_dic["per_device_eval_batch_size"], shuffle=False)
+
+    # batched inference
+    #reconstructed_scores = []
+    labels_pred = []
+    for batch in tqdm.tqdm(dataloader, desc="Inference"):
+        inputs_batched = {k: v.to(model.device) for k, v in batch.items()}
+        outputs = model.generate(
+            **inputs_batched,
+            **{key: value for key, value in config_params.items() if key != "generation_num_beams"},
+        )
+
+        """# compute transition scores for sequences differently if no beam search
+        if config_params["num_beams"] == 1:
+            transition_scores = model.compute_transition_scores(
+                outputs.sequences, outputs.scores, normalize_logits=False,  # outputs.beam_indices
+            )
+        else:
+            transition_scores = model.compute_transition_scores(
+                outputs.sequences, outputs.scores, outputs.beam_indices, normalize_logits=False
+            )
+
+        ## get scores for entire sequence
+        # If you sum the generated tokens' scores and apply the length penalty, you'll get the sequence scores.
+        # Tip: set `normalize_logits=True` to recompute the scores from the normalized logits.
+        output_length = inputs["input_ids"].shape[1] + np.sum(transition_scores.to(torch.float32).cpu().numpy() < 0, axis=1)
+        length_penalty = model.generation_config.length_penalty
+        reconstructed_scores_batch = transition_scores.to(torch.float32).cpu().sum(axis=1) / (output_length ** length_penalty)
+        reconstructed_scores.append(reconstructed_scores_batch.tolist())
+        """
+
+        # get predicted label strings
+        labels_pred_batch = tokenizer.batch_decode(outputs.sequences, skip_special_tokens=True)
+        labels_pred.append(labels_pred_batch)
+
+    #reconstructed_scores = [item for sublist in reconstructed_scores for item in sublist]
+    labels_pred = [item for sublist in labels_pred for item in sublist]
+
+
+    ## calculate metrics
+    #warnings.filterwarnings('ignore')
+    # metrics
+    precision_macro, recall_macro, f1_macro, _ = precision_recall_fscore_support(labels_gold, labels_pred, average='macro',
+                                                                                 zero_division=0)  # https://scikit-learn.org/stable/modules/generated/sklearn.metrics.precision_recall_fscore_support.html
+    precision_micro, recall_micro, f1_micro, _ = precision_recall_fscore_support(labels_gold, labels_pred, average='micro',
+                                                                                 zero_division=0)  # https://scikit-learn.org/stable/modules/generated/sklearn.metrics.precision_recall_fscore_support.html
+    acc_balanced = balanced_accuracy_score(labels_gold, labels_pred)
+    acc_not_balanced = accuracy_score(labels_gold, labels_pred)
+
+    metrics = {'eval_f1_macro': f1_macro,
+            'eval_f1_micro': f1_micro,
+            'eval_accuracy_balanced': acc_balanced,
+            'eval_accuracy_not_b': acc_not_balanced,
+            'eval_precision_macro': precision_macro,
+            'eval_recall_macro': recall_macro,
+            'eval_precision_micro': precision_micro,
+            'eval_recall_micro': recall_micro,
+            'eval_label_gold_raw': labels_gold,
+            'eval_label_predicted_raw': labels_pred
+            }
+    print("Aggregate metrics: ", {key: metrics[key] for key in metrics if key not in ["eval_label_gold_raw", "eval_label_predicted_raw"]} )  # print metrics but without label lists
+    print("Detailed metrics: ", classification_report(labels_gold, labels_pred, sample_weight=None, digits=2, output_dict=True,  #labels=np.sort(pd.factorize(label_text_alphabetical, sort=True)[0]), target_names=label_text_alphabetical,
+                                zero_division='warn'), "\n")
+    return metrics
+
 
 ### Define trainer and hyperparameters
-from transformers import TrainingArguments
 
-def set_train_args(hyperparams_dic=None, training_directory=None, disable_tqdm=False, **kwargs):
+def set_train_args(hyperparams_dic=None, training_directory=None, disable_tqdm=False, method=None, **kwargs):
     # https://huggingface.co/transformers/main_classes/trainer.html#transformers.TrainingArguments
-    
-    train_args = TrainingArguments(
-        output_dir=f"./{training_directory}", #f'./{training_directory}',  #f'./results/{training_directory}',
-        logging_dir=f"./{training_directory}", #f'./{training_directory}',  #f'./logs/{training_directory}',
-        **hyperparams_dic,
-        **kwargs,
-        # num_train_epochs=4,
-        # learning_rate=1e-5,
-        # per_device_train_batch_size=8,
-        # per_device_eval_batch_size=8,
-        # warmup_steps=0,  # 1000, 0
-        # warmup_ratio=0,  #0.1, 0.06, 0
-        # weight_decay=0,  #0.1, 0
-        #load_best_model_at_end=True,
-        #metric_for_best_model="f1_macro",
-        #fp16=True,
-        #fp16_full_eval=True,
-        #evaluation_strategy="no",  # "epoch"
-        #seed=42,
-        # eval_steps=300  # evaluate after n steps if evaluation_strategy!='steps'. defaults to logging_steps
-        save_strategy="no",  # options: "no"/"steps"/"epoch"
-        # save_steps=1_000_000,              # Number of updates steps before two checkpoint saves.
-        save_total_limit=10,             # If a value is passed, will limit the total amount of checkpoints. Deletes the older checkpoints in output_dir
-        logging_strategy="epoch",
-        report_to="all",  # "all"
-        disable_tqdm=disable_tqdm,
-        # push_to_hub=False,
-        # push_to_hub_model_id=f"{model_name}-finetuned-{task}",
-    )
-    # for n, v in best_run.hyperparameters.items():
-    #    setattr(trainer.args, n, v)
+
+    if method == "generation":
+        train_args = Seq2SeqTrainingArguments(
+            output_dir=f"./{training_directory}",  # f'./{training_directory}',  #f'./results/{training_directory}',
+            logging_dir=f"./{training_directory}",  # f'./{training_directory}',  #f'./logs/{training_directory}',
+            **hyperparams_dic,
+            **kwargs,
+            save_strategy="no",  # options: "no"/"steps"/"epoch"
+            save_total_limit=10,  # If a value is passed, will limit the total amount of checkpoints. Deletes the older checkpoints in output_dir
+            logging_strategy="epoch",
+            report_to="all",  # "all"
+            disable_tqdm=disable_tqdm,
+        )
+    else:
+        train_args = TrainingArguments(
+            output_dir=f"./{training_directory}", #f'./{training_directory}',  #f'./results/{training_directory}',
+            logging_dir=f"./{training_directory}", #f'./{training_directory}',  #f'./logs/{training_directory}',
+            **hyperparams_dic,
+            **kwargs,
+            save_strategy="no",  # options: "no"/"steps"/"epoch"
+            save_total_limit=10,             # If a value is passed, will limit the total amount of checkpoints. Deletes the older checkpoints in output_dir
+            logging_strategy="epoch",
+            report_to="all",  # "all"
+            disable_tqdm=disable_tqdm,
+        )
 
     return train_args
 
 
-from transformers import Trainer
-
 def create_trainer(model=None, tokenizer=None, encoded_dataset=None, train_args=None, label_text_alphabetical=None, method=None):
-  if ("nli" in method) or (method == "nsp"):
-    compute_metrics = compute_metrics_nli_binary
-  elif method == "standard_dl":
-    compute_metrics = compute_metrics_standard
-  else:
-    raise Exception(f"Compute metrics for trainer not specified correctly: {method}")
+    if ("nli" in method) or (method == "nsp"):
+        compute_metrics = compute_metrics_nli_binary
+    elif method == "standard_dl":
+        compute_metrics = compute_metrics_standard
+    elif method == "generation":
+        # ! Seq2SeqTrainer does not work well with compute metrics/seems buggy
+        # ! need to calculate metrics separately
+        pass
+    else:
+        raise Exception(f"Compute metrics for trainer not specified correctly: {method}")
 
-  trainer = Trainer(
-      model=model,
-      tokenizer=tokenizer,
-      args=train_args,
-      train_dataset=encoded_dataset["train"],  # ["train"].shard(index=1, num_shards=100),  # https://huggingface.co/docs/datasets/processing.html#sharding-the-dataset-shard
-      eval_dataset=encoded_dataset["test"],
-      compute_metrics=lambda eval_pred: compute_metrics(eval_pred, label_text_alphabetical=label_text_alphabetical)  # compute_metrics_nli_binary  # compute_metrics
-  )
-  return trainer
+    if method == "generation":
+        data_collator = DataCollatorForSeq2Seq(tokenizer, model=model)
+        trainer = Seq2SeqTrainer(
+            model=model,
+            tokenizer=tokenizer,
+            args=train_args,
+            train_dataset=encoded_dataset["train"],
+            eval_dataset=encoded_dataset["test"],
+            # this should actually not be used with seq2seq
+            #compute_metrics=lambda eval_pred: compute_metrics(eval_pred, label_text_alphabetical=label_text_alphabetical, only_return_probabilities=False),
+            data_collator=data_collator,
+        )
+    else:
+        trainer = Trainer(
+            model=model,
+            tokenizer=tokenizer,
+            args=train_args,
+            train_dataset=encoded_dataset["train"],  # ["train"].shard(index=1, num_shards=100),  # https://huggingface.co/docs/datasets/processing.html#sharding-the-dataset-shard
+            eval_dataset=encoded_dataset["test"],
+            compute_metrics=lambda eval_pred: compute_metrics(eval_pred, label_text_alphabetical=label_text_alphabetical)  # compute_metrics_nli_binary  # compute_metrics
+        )
+
+    return trainer
 
 
 ## cleaning memory in case of memory overload

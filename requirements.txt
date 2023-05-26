@@ -1,5 +1,4 @@
 
-
 pandas~=1.4.3
 numpy~=1.23.1
 scikit-learn~=1.1.1
@@ -9,6 +8,7 @@ openpyxl~=3.0.10
 eli5~=0.13.0  # + ipython
 
 transformers[sentencepiece]~=4.26  #4.25.1
+accelerate~=0.19
 datasets~=2.8.0
 joblib~=1.1.0
 tqdm~=4.64.1

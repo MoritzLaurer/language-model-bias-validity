@@ -22,8 +22,10 @@ sys.path.insert(0, os.getcwd())
 import helpers
 import importlib  # in case of manual updates in .py file
 importlib.reload(helpers)
-from helpers import compute_metrics_standard, clean_memory, compute_metrics_nli_binary
-from helpers import load_model_tokenizer, tokenize_datasets, set_train_args, create_trainer, format_nli_trainset, format_nli_testset
+from helpers import (
+    compute_metrics_standard, clean_memory, compute_metrics_nli_binary, compute_metrics_generation,
+    load_model_tokenizer, tokenize_datasets, set_train_args, create_trainer, format_nli_trainset, format_nli_testset
+)
 
 # Create the argparse to pass arguments via terminal
 import argparse
@@ -76,11 +78,11 @@ else:
     args = parser.parse_args(["--task", "pimpo-simple",  # pimpo, uk-leftright-simple, uk-leftright
                             "--dataset", "pimpo",  # uk-leftright-econ, pimpo
                             "--vectorizer", "transformer",
-                            "--model", "transformer",
-                            "--method", "nli",
-                            "--sample_size", "500", "--study_date", "20230526",
+                            "--model", "google/flan-t5-small",
+                            "--method", "generation",
+                            "--sample_size", "100", "--study_date", "20230526",
                             "--n_iteration", "1", "--n_iterations_max", "5",
-                            "--group", "random1", "--n_tokens_remove", "0", "--max_length", "512",
+                            "--group", "random1", "--n_tokens_remove", "0", "--max_length", "256",
                             #"--save_outputs"
                             ])
 
@@ -107,7 +109,7 @@ SEED_GLOBAL = 42
 np.random.seed(SEED_GLOBAL)
 
 # special variables for pimpo
-SAMPLE_NO_TOPIC = 5_000
+SAMPLE_NO_TOPIC = 5_000  #5_000
 TRAIN_NOTOPIC_PROPORTION = 0.4
 
 # randomly assign different seeds for each run
@@ -121,12 +123,22 @@ print("Random seed for this run: ", SEED_RUN)
 assert DATASET.split("-")[0] in TASK, f"Mismatch between dataset {DATASET} and task {TASK}"
 
 
-## TODO: expand for T5
-if MODEL_NAME == "transformer":
+"""if (METHOD == "standard_dl") or (METHOD == "nli"):
     MODEL_NAME = "MoritzLaurer/DeBERTa-v3-base-mnli-fever-docnli-ling-2c"
+elif METHOD == "generation":
+    MODEL_NAME = "google/flan-t5-small"
 else:
-    raise Exception(f"MODEL_NAME {MODEL_NAME} not implemented")
+    raise Exception(f"MODEL_NAME {MODEL_NAME} not implemented")"""
 
+# shorten model_name, can use in file names later
+MODEL_NAME_SHORT = MODEL_NAME.split("/")[-1]
+MODEL_NAME_SHORT = MODEL_NAME_SHORT[:26]  # longer names lead to file name length bugs before
+print(MODEL_NAME_SHORT)
+
+if ("nli" in MODEL_NAME.lower()) and ("generation" in METHOD.lower()):
+    raise Exception(f"MODEL_NAME {MODEL_NAME} not implemented for METHOD {METHOD}")
+elif ("t5" in MODEL_NAME.lower()) and ("nli" in METHOD.lower() or "standard_dl" in METHOD.lower()):
+    raise Exception(f"MODEL_NAME {MODEL_NAME} not implemented for METHOD {METHOD}")
 
 
 
@@ -196,9 +208,11 @@ if VECTORIZER == "tfidf":
         df_cl["text_prepared"] = df_cl["text_preceding"].fillna('') + " " + df_cl["text_original"] + " " + df_cl["text_following"].fillna('')
 elif VECTORIZER == "transformer":
     if METHOD == "nli":
-        df_cl["text_prepared"] = df_cl["text_preceding_trans"].fillna('') + '  || The quote: "' + df_cl["text_original_trans"] + '" End of the quote ||  ' + df_cl["text_following_trans"].fillna('')
+        df_cl["text_prepared"] = df_cl["text_preceding_trans"].fillna('') + '  | The quote: "' + df_cl["text_original_trans"] + '" End of the quote |  ' + df_cl["text_following_trans"].fillna('')
     elif METHOD == "standard_dl":
         df_cl["text_prepared"] = df_cl["text_preceding_trans"].fillna('') + ' \n ' + df_cl["text_original_trans"] + ' \n ' + df_cl["text_following_trans"].fillna('')
+    elif METHOD == "generation":
+        df_cl["text_prepared"] = df_cl["text_preceding_trans"].fillna('') + '  | The quote: "' + df_cl["text_original_trans"] + '" End of the quote |  ' + df_cl["text_following_trans"].fillna('')
 else:
     raise Exception(f"Vectorizer {VECTORIZER} or METHOD {METHOD} not implemented.")
 
@@ -210,35 +224,6 @@ labels_num_via_numeric = df_cl[~df_cl.label_text.duplicated(keep="first")].sort_
 labels_num_via_text = pd.factorize(np.sort(df_cl.label_text.unique()))[0]  # label num via label_text: create label numeric via label text
 assert all(labels_num_via_numeric == labels_num_via_text)
 
-
-## lemmatize prepared text
-"""
-import spacy
-
-nlp = spacy.load("en_core_web_md")
-nlp.batch_size
-
-def lemmatize_and_stopwordremoval(text_lst):
-    texts_lemma = []
-    for doc in nlp.pipe(text_lst, n_process=1, disable=["ner"]):  # disable=["tok2vec", "ner"] "tagger", "attribute_ruler", "parser",
-        doc_lemmas = [token.lemma_ for token in doc if not (token.is_stop or token.is_punct)]
-        # if else in case all tokens are deleted due to stop word removal
-        if not any(pd.isna(doc_lemmas)):
-            doc_lemmas = " ".join(doc_lemmas)
-            texts_lemma.append(doc_lemmas)
-        else:
-            print(doc)
-            texts_lemma.append(doc.text)
-    return texts_lemma
-
-
-if "uk-rightleft" in DATASET:
-    df_cl["text_prepared"] = lemmatize_and_stopwordremoval(df_cl.text_prepared)
-    print("Spacy lemmatization done")
-elif "pimpo" in DATASET:
-    # re-using translated, concatenated, lemmatized, stopword-cleaned column from multilingual paper
-    df_cl["text_prepared"] = df_cl["text_trans_concat_tfidf"]
-"""
 
 
 ## add left/right aggreg parfam to df
@@ -339,8 +324,9 @@ if "pimpo" in DATASET:
 print("df_test.label_text.value_counts:\n", df_test.label_text.value_counts())
 
 
-### format data if NLI
+### format data if NLI or generative
 
+## NLI instructions
 if METHOD == "nli":
     hypo_label_dic = {
         "neutral": "The quote is neutral towards immigration/integration or describes the status quo of immigration/integration.",
@@ -363,44 +349,16 @@ elif METHOD == "nli_void":
         "no_topic": "The quote is about category D.",
     }
 
-"""HYPOTHESIS = "short"
-if TASK == "immigration":
-    if HYPOTHESIS == "short":
-        hypo_label_dic = {
-            "immigration_neutral": "The quote is neutral towards immigration or describes the status quo of immigration.",
-            "immigration_sceptical": "The quote is sceptical of immigration.",
-            "immigration_supportive": "The quote is supportive of immigration.",
-            "no_topic": "The quote is not about immigration.",
-        }
-    elif HYPOTHESIS == "long":
-        hypo_label_dic = {
-            "immigration_neutral": "The quote describes immigration neutrally without implied value judgement or describes the status quo of immigration, for example only stating facts or using technocratic language about immigration",
-            "immigration_sceptical": "The quote describes immigration sceptically / disapprovingly. For example, the quote could mention the costs of immigration, be against migrant workers, state that foreign labour decreases natives' wages, that there are already enough refugees, refugees are actually economic migrants, be in favour of stricter immigration controls, exceptions to the freedom of movement in the EU.",
-            "immigration_supportive": "The quote describes immigration favourably / supportively. For example, the quote could mention the benefits of immigration, the need for migrant workers, international obligations to take in refugees, protection of human rights, in favour of family reunification or freedom of movement in the EU.",
-            "no_topic": "The quote is not about immigration.",
-        }
-    else:
-        raise Exception(f"Hypothesis {HYPOTHESIS} not implemented")
-elif TASK == "integration":
-    if HYPOTHESIS == "short":
-        hypo_label_dic = {
-            "integration_neutral": "The quote is neutral towards immigrant integration or describes the status quo of immigrant integration.",
-            "integration_sceptical": "The quote is sceptical of immigrant integration.",
-            "integration_supportive": "The quote is supportive of immigrant integration.",
-            "no_topic": "The quote is not about immigrant integration.",
-        }
-    elif HYPOTHESIS == "long":
-        hypo_label_dic = {
-            "integration_neutral": "The quote describes immigrant integration neutrally or describes the status quo of immigrant integration, for example only stating facts or using technocratic language about immigrant integration",
-            "integration_sceptical": "The quote describes immigrant integration sceptically / disapprovingly. For example, the quote could mention negative references to multiculturalism and diversity, underline the importance of ethnic homogeneity and national culture, call for immigrants to give up their culture of origin, warn of islamization, mention duties in order to stay in the country, demand integration tests, associate immigrant communities with problems or crimes, demand an oath of allegiance of immigrants, or underline ethnic criteria for receiving citizenship.",
-            "integration_supportive": "The quote describes immigrant integration favourably / supportively. For example, the quote could mention positive references to multiculturalism and diversity, underline cosmopolitan values towards immigrants, demand inclusion of immigrants, demand anti-discrimination policies based on ethnicity and origin, demand policies against racism, demand more rights for immigrants, or underline civic values instead of ethnic values for being able to receive citizenship.",
-            "no_topic": "The quote is not about immigrant integration.",
-        }
-    else:
-        raise Exception(f"Hypothesis {HYPOTHESIS} not implemented")
-else:
-    raise Exception(f"Task {TASK} not implemented")"""
-
+## generative instructions
+if METHOD == "generation":
+    instruction_short = """\n
+Which of the following categories applies best to the quote considering the context above?
+A: The quote is neutral towards immigration/integration or describes the status quo of immigration/integration.
+B: The quote is sceptical of immigration/integration.
+C: The quote is supportive of immigration/integration.
+D: The quote is not about immigration/integration.
+Answer: """
+    label_text_map_generation = {"neutral": "A", "sceptical": "B", "supportive": "C", "no_topic": "D"}
 
 
 if METHOD in ["standard_dl", "dl_embed", "classical_ml"]:
@@ -410,19 +368,53 @@ elif "nli" in METHOD:
     df_train_format = format_nli_trainset(df_train=df_train, hypo_label_dic=hypo_label_dic, random_seed=SEED_RUN)
     df_test_format = format_nli_testset(df_test=df_test, hypo_label_dic=hypo_label_dic)
 elif "generation" in METHOD:
-    raise NotImplementedError
+    df_train_format = df_train.copy(deep=True)
+    df_test_format = df_test.copy(deep=True)
+    # adapt input text
+    df_train_format["text_prepared"] = df_train_format["text_prepared"] + instruction_short
+    df_test_format["text_prepared"] = df_test_format["text_prepared"] + instruction_short
+    # adapt label
+    df_train_format["label_text_original"] = df_train_format["label_text"]
+    df_test_format["label_text_original"] = df_test_format["label_text"]
+    df_train_format["label_text"] = df_train_format["label_text"].map(label_text_map_generation)
+    df_test_format["label_text"] = df_test_format["label_text"].map(label_text_map_generation)
 
+## parameters relevant for generative models
+model_params = {
+    #"torch_dtype": torch.float16,  #torch.bfloat16, torch.float16
+    #load_in_8bit=True,
+    "device_map": "auto",
+    "offload_folder": "offload",
+    "offload_state_dict": True
+}
+
+config_params_generation = {
+    "max_new_tokens": 4,
+    "num_beams": 2,
+    #"generation_num_beams": 5,  # https://github.com/huggingface/transformers/blob/68287689f2f0d8b7063c400230b3766987abf18d/src/transformers/training_args_seq2seq.py#L42
+    "num_return_sequences": 1,
+    "temperature": 0,  # default: 1.0
+    "top_k": 50,  # default: 50
+    "return_dict_in_generate": True,
+    "output_scores": True,
+    #"predict_with_generate": False,
+    #"include_inputs_for_metrics": True
+    "renormalize_logits": "True",
+}
 
 
 ##### train classifier
 label_text_alphabetical = np.sort(df_cl.label_text.unique())
 
-model, tokenizer = load_model_tokenizer(model_name=MODEL_NAME, method=METHOD, label_text_alphabetical=label_text_alphabetical, model_max_length=MODEL_MAX_LENGTH)
+model, tokenizer = load_model_tokenizer(model_name=MODEL_NAME, method=METHOD,
+                                        label_text_alphabetical=label_text_alphabetical, model_max_length=MODEL_MAX_LENGTH,
+                                        model_params=model_params, config_params=config_params_generation)
 
 
 #### tokenize
 
-dataset = tokenize_datasets(df_train_samp=df_train_format, df_test=df_test_format, tokenizer=tokenizer, method=METHOD, max_length=MODEL_MAX_LENGTH)
+dataset = tokenize_datasets(df_train_samp=df_train_format, df_test=df_test_format, tokenizer=tokenizer, method=METHOD,
+                            max_length=MODEL_MAX_LENGTH, config_params=config_params_generation)
 
 
 ### create trainer
@@ -447,6 +439,12 @@ elif METHOD == "nli_void":
     HYPER_PARAMS = {'lr_scheduler_type': 'linear', 'learning_rate': 2e-5, 'num_train_epochs': 15, 'seed': SEED_GLOBAL, 'per_device_train_batch_size': 32, 'warmup_ratio': 0.40, 'weight_decay': 0.01, 'per_device_eval_batch_size': 200}  # "do_eval": False
 elif "nli" in METHOD:
     HYPER_PARAMS = {'lr_scheduler_type': 'linear', 'learning_rate': 2e-5, 'num_train_epochs': 5, 'seed': SEED_GLOBAL, 'per_device_train_batch_size': 32, 'warmup_ratio': 0.40, 'weight_decay': 0.01, 'per_device_eval_batch_size': 200}  # "do_eval": False
+elif "generation" in METHOD:
+    HYPER_PARAMS = {
+        'lr_scheduler_type': 'linear', 'learning_rate': 5e-4, 'num_train_epochs': 5, 'seed': SEED_GLOBAL, 'per_device_train_batch_size': 32, 'warmup_ratio': 0.20, 'weight_decay': 0.01, 'per_device_eval_batch_size': 64*2,
+        # ! need to set this to true, otherwise seq2seq-trainer is not used https://github.com/huggingface/transformers/blob/v4.28.1/src/transformers/trainer_seq2seq.py#L246
+        "predict_with_generate": True, "gradient_checkpointing": False, # "gradient_accumulation_steps": 2,
+    }
 else:
     raise Exception("Method not implemented for hps")
 
@@ -459,8 +457,10 @@ else:
 # FP16 if cuda and if not mDeBERTa
 fp16_bool = True if torch.cuda.is_available() else False
 if "mDeBERTa".lower() in MODEL_NAME.lower(): fp16_bool = False  # mDeBERTa does not support FP16 yet
+# TODO: can fp16 cause issues with generative models?
 
-train_args = set_train_args(hyperparams_dic=HYPER_PARAMS, training_directory=TRAINING_DIRECTORY, disable_tqdm=False, evaluation_strategy="no", fp16=fp16_bool)
+train_args = set_train_args(hyperparams_dic=HYPER_PARAMS, training_directory=TRAINING_DIRECTORY, method=METHOD,
+                            disable_tqdm=False, evaluation_strategy="no", fp16=fp16_bool)
 
 trainer = create_trainer(model=model, tokenizer=tokenizer, encoded_dataset=dataset, train_args=train_args,
                          method=METHOD, label_text_alphabetical=label_text_alphabetical)
@@ -472,7 +472,12 @@ trainer.train()
 
 ### Evaluate
 # test on test set
-results_test = trainer.evaluate(eval_dataset=dataset["test"])  # eval_dataset=encoded_dataset["test"]
+if METHOD != "generation":
+    results_test = trainer.evaluate(eval_dataset=dataset["test"])  # eval_dataset=encoded_dataset["test"]
+else:
+    # ! will not contain certain elements like inference speed, loss
+    results_test = compute_metrics_generation(dataset=dataset, model=trainer.model, tokenizer=tokenizer, hyperparams_dic=HYPER_PARAMS, config_params=config_params_generation)
+
 print("\nTest results:")
 print(results_test)
 
