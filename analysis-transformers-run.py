@@ -350,6 +350,7 @@ elif METHOD == "nli_void":
     }
 
 ## generative instructions
+# TODO: need to somehow make sure that these instructions never get cut, but only the input text
 if METHOD == "generation":
     instruction_short = """\n
 Which of the following categories applies best to the quote considering the context above?
@@ -359,7 +360,6 @@ C: The quote is supportive of immigration/integration.
 D: The quote is not about immigration/integration.
 Answer: """
     label_text_map_generation = {"neutral": "A", "sceptical": "B", "supportive": "C", "no_topic": "D"}
-
 
 if METHOD in ["standard_dl", "dl_embed", "classical_ml"]:
     df_train_format = df_train.copy(deep=True)
@@ -441,9 +441,9 @@ elif "nli" in METHOD:
     HYPER_PARAMS = {'lr_scheduler_type': 'linear', 'learning_rate': 2e-5, 'num_train_epochs': 5, 'seed': SEED_GLOBAL, 'per_device_train_batch_size': 32, 'warmup_ratio': 0.40, 'weight_decay': 0.01, 'per_device_eval_batch_size': 200}  # "do_eval": False
 elif "generation" in METHOD:
     HYPER_PARAMS = {
-        'lr_scheduler_type': 'linear', 'learning_rate': 5e-4, 'num_train_epochs': 5, 'seed': SEED_GLOBAL, 'per_device_train_batch_size': 32, 'warmup_ratio': 0.20, 'weight_decay': 0.01, 'per_device_eval_batch_size': 64*2,
+        'lr_scheduler_type': 'linear', 'learning_rate': 5e-4, 'num_train_epochs': 5, 'seed': SEED_GLOBAL, 'per_device_train_batch_size': 16, 'warmup_ratio': 0.20, 'weight_decay': 0.01, 'per_device_eval_batch_size': 64-32,
         # ! need to set this to true, otherwise seq2seq-trainer is not used https://github.com/huggingface/transformers/blob/v4.28.1/src/transformers/trainer_seq2seq.py#L246
-        "predict_with_generate": True, "gradient_checkpointing": False, # "gradient_accumulation_steps": 2,
+        "predict_with_generate": True, "gradient_checkpointing": False, #"gradient_accumulation_steps": 8,
     }
 else:
     raise Exception("Method not implemented for hps")
@@ -458,6 +458,7 @@ else:
 fp16_bool = True if torch.cuda.is_available() else False
 if "mDeBERTa".lower() in MODEL_NAME.lower(): fp16_bool = False  # mDeBERTa does not support FP16 yet
 # TODO: can fp16 cause issues with generative models?
+fp16 = False
 
 train_args = set_train_args(hyperparams_dic=HYPER_PARAMS, training_directory=TRAINING_DIRECTORY, method=METHOD,
                             disable_tqdm=False, evaluation_strategy="no", fp16=fp16_bool)

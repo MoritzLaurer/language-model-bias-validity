@@ -33,9 +33,9 @@ vectorizer='transformer'
 group_lst=("random1")  # ("random1") ("random2") ("random3") ("randomall") ("nld" "esp" "dnk" "deu") ("CHR" "LEF" "LIB" "NAT" "SOC")
 study_date=20230427
 sample_size=500
-n_iterations_max=5
+n_iterations_max=3
 #n_tokens_remove_lst=(0 5 10)
-max_length=512
+max_length=448
 
 total_iteration_required=$((n_iterations_max * ${#group_lst[@]}))
 #total_iteration_required=$((n_iterations_max * ${#group_lst[@]}*${#n_tokens_remove_lst[@]}))

@@ -151,10 +151,12 @@ def tokenize_datasets(df_train_samp=None, df_test=None, tokenizer=None, method=N
     def tokenize_func_generation(examples):
         # two separate tokenization steps to deal with fact that labels are also input text / count towards max token limit
         model_inputs = tokenizer(
-            examples["text_prepared"], max_length=max_length - config_params["max_new_tokens"], truncation=True, return_tensors="pt", padding=True
+            examples["text_prepared"], max_length=max_length, truncation=True, return_tensors="pt", padding=True  #"longest" #True
+            # unsure if two sequences of labels and text need to sum to max length or not
+            #examples["text_prepared"], max_length=max_length - config_params["max_new_tokens"], truncation=True, return_tensors="pt", padding=True
         )
         labels = tokenizer(
-            examples["label_text"], max_length=config_params["max_new_tokens"], truncation=True, return_tensors="pt", padding=True
+            examples["label_text"], max_length=config_params["max_new_tokens"], truncation=True, return_tensors="pt", padding=True  #"longest" #True
         )
         model_inputs["labels"] = labels["input_ids"]
         return model_inputs
@@ -314,7 +316,13 @@ def compute_metrics_generation(dataset=None, model=None, tokenizer=None, hyperpa
     labels_gold = tokenizer.batch_decode(dataset["test"]["labels"], skip_special_tokens=True)
 
     # convert pre-tokenized inputs to correct tensor format for inference
-    inputs = {key: torch.tensor(value, dtype=torch.long).to(model.device) for key, value in dataset["test"].to_dict().items() if key in ["input_ids", "attention_mask", "token_type_ids"]}
+    #inputs = {key: torch.tensor(value, dtype=torch.long).to(model.device) for key, value in dataset["test"].to_dict().items() if key in ["input_ids", "attention_mask", "token_type_ids"]}
+
+    # trying to avoid varying sequence lengths issue
+    from torch.nn.utils.rnn import pad_sequence
+    # pad_sequence([torch.tensor(seq) for seq in [[8,8,8], [2,2,2,2]]], batch_first=True)
+    inputs = {key: pad_sequence([torch.tensor(seq, dtype=torch.long) for seq in value], batch_first=True).to(model.device) for key, value in dataset["test"].to_dict().items() if
+              key in ["input_ids", "attention_mask", "token_type_ids"]}
 
     # dataloader for batched inference on pre-tokenized inputs to avoid memory issues
     from torch.utils.data import Dataset, DataLoader
@@ -367,6 +375,11 @@ def compute_metrics_generation(dataset=None, model=None, tokenizer=None, hyperpa
 
     #reconstructed_scores = [item for sublist in reconstructed_scores for item in sublist]
     labels_pred = [item for sublist in labels_pred for item in sublist]
+
+    # ! careful, this will cause issues if output is not single tokens/letters
+    def remove_non_alphabetical(text):
+        return ''.join(char for char in text if char.isalpha())
+    labels_pred = [remove_non_alphabetical(string).strip().upper()[:1] for string in labels_pred]
 
 
     ## calculate metrics
