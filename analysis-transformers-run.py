@@ -413,66 +413,6 @@ elif "generation" in METHOD:
     raise NotImplementedError
 
 
-### test splitting df_test in in-distribution and OOD split
-## random ood split
-#df_test_format_ood = df_test_format.sample(frac=0.5, random_state=SEED_RUN)
-#df_test_format = df_test_format[~df_test_format.index.isin(df_test_format_ood.index)]
-## by-group ood split - unclear if useful (deletable?)
-"""groups_all = df_test_format.country_iso.unique()
-groups_sample_size = int(len(df_test_format.country_iso.unique()) / 2)
-groups_ood = np.random.choice(groups_all, size=groups_sample_size, replace=False)
-df_test_format_ood = df_test_format[df_test_format.country_iso.isin(groups_ood)]
-df_test_format = df_test_format[~df_test_format.country_iso.isin(groups_ood)]"""
-"""groups_majority_size = int(len(df_train_format.country_iso.unique()) / 4)
-groups_majority = df_train_format.country_iso.value_counts().nlargest(n=groups_majority_size).index
-df_test_format_ood = df_test_format[~df_test_format.country_iso.isin(groups_majority)]
-df_test_format = df_test_format[df_test_format.country_iso.isin(groups_majority)]"""
-## biased by-group ood split
-# specific groups are spuriously linked to specific classes
-# downsample left-parties to contain no con-migration texts & downsample right-parties contain no pro-migration texts
-"""df_train_left_pro = df_train_format[df_train_format.label_text.str.contains("supportive|neutral|no_topic")
-                                     & df_train_format.parfam_text_aggreg.str.contains("left")]
-df_train_right_con = df_train_format[df_train_format.label_text.str.contains("sceptical|neutral|no_topic")
-                                     & df_train_format.parfam_text_aggreg.str.contains("right")]
-df_train_format = pd.concat([df_train_left_pro, df_train_right_con])
-# same biased test set
-df_test_left_pro = df_test_format[df_test_format.label_text.str.contains("supportive|neutral|no_topic")
-                                     & df_test_format.parfam_text_aggreg.str.contains("left")]
-df_test_right_con = df_test_format[df_test_format.label_text.str.contains("sceptical|neutral|no_topic")
-                                     & df_test_format.parfam_text_aggreg.str.contains("right")]
-df_test_format = pd.concat([df_test_left_pro, df_test_right_con])"""
-# unbiased test set
-#df_test_format_ood
-
-
-### Test injecting noise/bias tokens
-
-"""def add_noise_token(df, fraction_noise=1, noise_column_name="label_text"):
-    df_samp_noise = df.sample(frac=fraction_noise, random_state=SEED_RUN)
-    if noise_column_name == "label_text":
-        df_samp_noise["text_prepared"] = f"{noise_column_name}_" + str(df_samp_noise["label"].iloc[0]) + " " + df_samp_noise["text_prepared"]
-    else:
-        df_samp_noise["text_prepared"] = f"{noise_column_name}_" + str(df_samp_noise[noise_column_name].iloc[0]) + " " + df_samp_noise["text_prepared"]
-    df_nonoise = df[~df.index.isin(df_samp_noise.index)]
-    df_noise = pd.concat([df_samp_noise, df_nonoise])
-    return df_noise
-
-## Test injecting meaningless label token for each label
-df_train_format = df_train_format.groupby(by="label_text", as_index=False, group_keys=False).apply(
-    lambda x: add_noise_token(x, fraction_noise=0.01))
-
-df_test_format = df_test_format.groupby(by="label_text", as_index=False, group_keys=False).apply(
-    lambda x: add_noise_token(x, fraction_noise=0.01))
-"""
-## Test injecting meaningless group token in groups that spuriously correlate with labels
-"""df_train_format = df_train_format.groupby(by="parfam_text", as_index=False, group_keys=False).apply(
-    lambda x: add_noise_token(x, fraction_noise=0.8, noise_column_name="parfam_text"))
-
-df_test_format = df_test_format.groupby(by="parfam_text", as_index=False, group_keys=False).apply(
-    lambda x: add_noise_token(x, fraction_noise=0.8, noise_column_name="parfam_text"))"""
-# ! also without injecting meaningless group token, there is difference between biased in-distribution and OOD test data
-
-
 
 ##### train classifier
 label_text_alphabetical = np.sort(df_cl.label_text.unique())
