@@ -12,9 +12,14 @@ print("Terminal execution: ", EXECUTION_TERMINAL, "  (sys.argv[0]: ", sys.argv[0
 import pandas as pd
 import numpy as np
 import os
-import torch
-import datasets
-import tqdm
+
+
+# ## Load helper functions
+import sys
+sys.path.insert(0, os.getcwd())
+import helpers
+import importlib  # in case of manual updates in .py file
+importlib.reload(helpers)
 
 
 
@@ -55,15 +60,15 @@ parser.add_argument('-save', '--save_outputs', action="store_true",
 
 ## choose arguments depending on execution in terminal or in script for testing
 if EXECUTION_TERMINAL == True:
-  print("Arguments passed via the terminal:")
-  args = parser.parse_args()
-  # To show the results of the given option to screen.
-  print("")
-  for key, value in parser.parse_args()._get_kwargs():
-    print(value, "  ", key)
+    print("Arguments passed via the terminal:")
+    args = parser.parse_args()
+    # To show the results of the given option to screen.
+    print("")
+    for key, value in parser.parse_args()._get_kwargs():
+        print(value, "  ", key)
 else:
-  # parse args if not in terminal, but in script
-  args = parser.parse_args(["--task", "pimpo-simple",  # pimpo, uk-leftright-simple, uk-leftright
+    # parse args if not in terminal, but in script
+    args = parser.parse_args(["--task", "pimpo-simple",  # pimpo, uk-leftright-simple, uk-leftright
                             "--dataset", "pimpo",  # uk-leftright-econ, pimpo
                             "--vectorizer", "tfidf",
                             "--model", "logistic",
@@ -110,14 +115,7 @@ assert DATASET.split("-")[0] in TASK, f"Mismatch between dataset {DATASET} and t
 
 
 
-# ## Load helper functions
-import sys
-sys.path.insert(0, os.getcwd())
-import helpers
-import importlib  # in case of manual updates in .py file
-importlib.reload(helpers)
-from helpers import compute_metrics_standard, clean_memory, compute_metrics_nli_binary
-#from helpers import load_model_tokenizer, tokenize_datasets, set_train_args, create_trainer, format_nli_trainset, format_nli_testset
+
 
 
 ##### load dataset
@@ -179,13 +177,11 @@ elif TASK == "immigration":
     #task_label_text = ["immigration_supportive", "immigration_sceptical", "immigration_neutral", "no_topic"]
     raise NotImplementedError"""
 
+
 ## prepare input text data
 if VECTORIZER == "tfidf":
     if METHOD == "classical_ml":
         df_cl["text_prepared"] = df_cl["text_preceding"].fillna('') + " " + df_cl["text_original"] + " " + df_cl["text_following"].fillna('')
-elif VECTORIZER == "transformer":
-    if METHOD == "nli":
-        df_cl["text_prepared"] = df_cl["text_preceding_trans"].fillna('') + '  || The quote: "' + df_cl["text_original_trans"] + '" End of the quote ||  ' + df_cl["text_following_trans"].fillna('')
 else:
     raise Exception(f"Vectorizer {VECTORIZER} or METHOD {METHOD} not implemented.")
 

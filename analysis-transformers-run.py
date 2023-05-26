@@ -13,11 +13,9 @@ import pandas as pd
 import numpy as np
 import os
 import torch
-import datasets
-import tqdm
+#from transformers import AutoTokenizer, AutoConfig, AutoModelForSequenceClassification
+#from transformers import TrainingArguments
 
-from transformers import AutoTokenizer, AutoConfig, AutoModelForSequenceClassification
-from transformers import TrainingArguments
 # Load helper functions
 import sys
 sys.path.insert(0, os.getcwd())
@@ -67,15 +65,15 @@ parser.add_argument('-max_l', '--max_length', type=int, #nargs='+',
 
 ## choose arguments depending on execution in terminal or in script for testing
 if EXECUTION_TERMINAL == True:
-  print("Arguments passed via the terminal:")
-  args = parser.parse_args()
-  # To show the results of the given option to screen.
-  print("")
-  for key, value in parser.parse_args()._get_kwargs():
-    print(value, "  ", key)
+    print("Arguments passed via the terminal:")
+    args = parser.parse_args()
+    # To show the results of the given option to screen.
+    print("")
+    for key, value in parser.parse_args()._get_kwargs():
+        print(value, "  ", key)
 else:
-  # parse args if not in terminal, but in script
-  args = parser.parse_args(["--task", "pimpo-simple",  # pimpo, uk-leftright-simple, uk-leftright
+    # parse args if not in terminal, but in script
+    args = parser.parse_args(["--task", "pimpo-simple",  # pimpo, uk-leftright-simple, uk-leftright
                             "--dataset", "pimpo",  # uk-leftright-econ, pimpo
                             "--vectorizer", "transformer",
                             "--model", "transformer",
@@ -123,21 +121,13 @@ print("Random seed for this run: ", SEED_RUN)
 assert DATASET.split("-")[0] in TASK, f"Mismatch between dataset {DATASET} and task {TASK}"
 
 
+## TODO: expand for T5
 if MODEL_NAME == "transformer":
     MODEL_NAME = "MoritzLaurer/DeBERTa-v3-base-mnli-fever-docnli-ling-2c"
 else:
     raise Exception(f"MODEL_NAME {MODEL_NAME} not implemented")
 
 
-
-# ## Load helper functions
-import sys
-sys.path.insert(0, os.getcwd())
-import helpers
-import importlib  # in case of manual updates in .py file
-importlib.reload(helpers)
-from helpers import compute_metrics_standard, clean_memory, compute_metrics_nli_binary
-#from helpers import load_model_tokenizer, tokenize_datasets, set_train_args, create_trainer, format_nli_trainset, format_nli_testset
 
 
 ##### load dataset
@@ -205,7 +195,7 @@ if VECTORIZER == "tfidf":
     if METHOD == "classical_ml":
         df_cl["text_prepared"] = df_cl["text_preceding"].fillna('') + " " + df_cl["text_original"] + " " + df_cl["text_following"].fillna('')
 elif VECTORIZER == "transformer":
-    if "nli" in METHOD:
+    if METHOD == "nli":
         df_cl["text_prepared"] = df_cl["text_preceding_trans"].fillna('') + '  || The quote: "' + df_cl["text_original_trans"] + '" End of the quote ||  ' + df_cl["text_following_trans"].fillna('')
     elif METHOD == "standard_dl":
         df_cl["text_prepared"] = df_cl["text_preceding_trans"].fillna('') + ' \n ' + df_cl["text_original_trans"] + ' \n ' + df_cl["text_following_trans"].fillna('')
@@ -247,7 +237,8 @@ if "uk-rightleft" in DATASET:
     print("Spacy lemmatization done")
 elif "pimpo" in DATASET:
     # re-using translated, concatenated, lemmatized, stopword-cleaned column from multilingual paper
-    df_cl["text_prepared"] = df_cl["text_trans_concat_tfidf"]"""
+    df_cl["text_prepared"] = df_cl["text_trans_concat_tfidf"]
+"""
 
 
 ## add left/right aggreg parfam to df
@@ -284,6 +275,8 @@ elif "random2" in GROUP:
     GROUP_join = random.sample(group_enough_data, 2)
     GROUP_join = '|'.join(GROUP_join)
     print(GROUP_join)
+
+#print(df_cl.groupby("country_iso").apply(lambda x: x.label_text.value_counts()))
 
 # sample training data
 if "uk-leftright" in DATASET:
