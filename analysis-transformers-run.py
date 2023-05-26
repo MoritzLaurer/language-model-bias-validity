@@ -77,10 +77,10 @@ else:
                             "--dataset", "pimpo",  # uk-leftright-econ, pimpo
                             "--vectorizer", "transformer",
                             "--model", "transformer",
-                            "--method", "standard_dl",
-                            "--sample_size", "8", "--study_date", "20230427",
+                            "--method", "nli",
+                            "--sample_size", "500", "--study_date", "20230526",
                             "--n_iteration", "1", "--n_iterations_max", "5",
-                            "--group", "deu", "--n_tokens_remove", "0", "--max_length", "8",
+                            "--group", "random1", "--n_tokens_remove", "0", "--max_length", "512",
                             #"--save_outputs"
                             ])
 
@@ -261,20 +261,25 @@ else:
     raise NotImplementedError
 
 
+import random
+random.seed(SEED_RUN)
 if "random3" in GROUP:
     # TODO: implement for more than countries and make more general
-    import random
-    random.seed(SEED_RUN)
     GROUP_join = random.sample(list(df_cl.country_iso.unique()), 3)
     GROUP_join = '|'.join(GROUP_join)
     print(GROUP_join)
 elif "random2" in GROUP:
-    import random
-    random.seed(SEED_RUN)
     group_enough_data = ["nld", "esp", "deu", "dnk", "aut"]
     GROUP_join = random.sample(group_enough_data, 2)
     GROUP_join = '|'.join(GROUP_join)
     print(GROUP_join)
+# TODO: use this in bash script for single groups. leads to clearer file naming and less total runs for single group-member runs
+elif "random1" in GROUP:
+    GROUP_join = random.sample(list(df_cl.country_iso.unique()), 1)[0]
+    print(GROUP_join)
+else:
+    raise NotImplementedError
+
 
 #print(df_cl.groupby("country_iso").apply(lambda x: x.label_text.value_counts()))
 
@@ -282,13 +287,20 @@ elif "random2" in GROUP:
 if "uk-leftright" in DATASET:
     df_train = df_cl.sample(n=MAX_SAMPLE, random_state=SEED_RUN)
 elif "pimpo" in DATASET:
-    # ! test: only sample df_train from one country/group
-    if ("random3" in GROUP) or ("random2" in GROUP):
+    """if ("random3" in GROUP) or ("random2" in GROUP):
         df_cl_group = df_cl[df_cl.country_iso.str.contains(GROUP_join)].copy(deep=True)
     elif "random" not in GROUP:
         df_cl_group = df_cl[df_cl[col_group_map[GROUP]] == GROUP ].copy(deep=True)
     else:
+        df_cl_group = df_cl.copy(deep=True)"""
+    # simplified
+    if "randomall" in GROUP:
         df_cl_group = df_cl.copy(deep=True)
+    elif "random" in GROUP:
+        # TODO: if beyond countries, double check if group_join regex really only matches single group-member per group-member string. works for countries, maybe not for other groups if one member is sub-string of other member
+        df_cl_group = df_cl[df_cl.country_iso.str.contains(GROUP_join)].copy(deep=True)
+    else:
+        raise NotImplementedError
 
     # sample x% of training data for no topic, then share the remainder equally across classes
     n_sample_notopic = int(MAX_SAMPLE * TRAIN_NOTOPIC_PROPORTION)
@@ -306,18 +318,16 @@ print("df_train.label_text.value_counts:\n", df_train.label_text.value_counts())
 
 # create df test
 df_test = df_cl[~df_cl.index.isin(df_train.index)]
-# also remove all GROUP from df_test?
-# TODO: remove this if. only added for backwards compatibility, because had not excluded own group in 500 samp originally (I think)
+# also remove all GROUP from df_test
+# TODO: remove this first if level later. had only added for backwards compatibility, because had not excluded own group in 500 samp originally (I think)
 if MAX_SAMPLE != 500:
     # TODO make work beyond countries
-    if ("random3" in GROUP) or ("random2" in GROUP):
+    if "randomall" in GROUP:
+        pass
+    elif "random" in GROUP:
+        # if df_train comes from specific group, remove this group from df_test
         df_test = df_test[~df_test.country_iso.str.contains(GROUP_join)].copy(deep=True)
-    elif "randomall" in GROUP:
-        # TODO: same as above, clean later
-        df_test = df_cl[~df_cl.index.isin(df_train.index)]
-    else:
-        df_test = df_test[~df_test.country_iso.str.contains(GROUP)].copy(deep=True)
-    #assert len(df_train) + len(df_test) == len(df_cl)
+
 
 # remove N no_topic for faster testing
 if "pimpo" in DATASET:
@@ -399,7 +409,8 @@ if METHOD in ["standard_dl", "dl_embed", "classical_ml"]:
 elif "nli" in METHOD:
     df_train_format = format_nli_trainset(df_train=df_train, hypo_label_dic=hypo_label_dic, random_seed=SEED_RUN)
     df_test_format = format_nli_testset(df_test=df_test, hypo_label_dic=hypo_label_dic)
-
+elif "generation" in METHOD:
+    raise NotImplementedError
 
 
 ### test splitting df_test in in-distribution and OOD split
