@@ -26,13 +26,13 @@ for group in group_lst:
         for seed in [102, 435, 860, 270, 106]:  # [102, 435, 860, 270, 106]
             # TODO: only temporary fix for 500 samp files
             if n_sample == "0500":
-                if (seed in [270, 106]):  # and (group == "random")
+                if seed in [270, 106]:  # and (group == "random")
                     continue
                 # name harmonization where older files have "random" instead of "randomall"
                 if group == "randomall" and method not in ["nli_long", "nli_void"]:
                     df_group_step = pd.read_csv(f"/Users/moritzlaurer/Dropbox/PhD/Papers/meta-metrics/meta-metrics-repo/results/pimpo/df_results_pimpo_random_{method}_samp{n_sample}_seed{seed}_20230427.csv")
                     #df_group_step = pd.read_csv(f"/Users/moritzlaurer/Dropbox/PhD/Papers/meta-metrics/meta-metrics-repo/results/pimpo/df_results_pimpo_{group}_{method}_samp{n_sample}_seed{seed}_20230427.csv")
-                 else:
+                else:
                     df_group_step = pd.read_csv(f"/Users/moritzlaurer/Dropbox/PhD/Papers/meta-metrics/meta-metrics-repo/results/pimpo/df_results_pimpo_{group}_{method}_samp{n_sample}_seed{seed}_20230427.csv")
             elif n_sample == "1000":
                 df_group_step = pd.read_csv(f"/Users/moritzlaurer/Dropbox/PhD/Papers/meta-metrics/meta-metrics-repo/results/pimpo/df_results_pimpo_{group}_{method}_samp{n_sample}_seed{seed}_20230427.csv")
