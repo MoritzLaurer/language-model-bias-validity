@@ -28,13 +28,17 @@ from helpers import (
 )
 
 # load latest version of ActiveLLM
-sys.path.insert(0, "/Users/moritzlaurer/Dropbox/PhD/open-source/ActiveLLM")
+if not EXECUTION_TERMINAL:
+    sys.path.insert(0, "/Users/moritzlaurer/Dropbox/PhD/open-source/ActiveLLM")
+else:
+    sys.path.insert(0, "/gpfs/home5/laurerm/meta-metrics-repo/ActiveLLM")
 from active_learner import ActiveLearner
 # reload in case of updates in active_learner.py
 import importlib
 import active_learner
 importlib.reload(active_learner)
 from active_learner import ActiveLearner
+
 
 # Create the argparse to pass arguments via terminal
 import argparse
@@ -45,6 +49,8 @@ parser.add_argument('-ds', '--dataset', type=str,
                     help='Name of dataset. Can be one of: "uk-leftright", "pimpo" ')
 parser.add_argument('-samp', '--sample_size', type=int, #nargs='+',
                     help='Sample size')
+parser.add_argument('-samp_no_topic', '--sample_size_no_topic', type=int, #nargs='+',
+                    help='Sample size for no-topic class')
 parser.add_argument('-m', '--method', type=str,
                     help='Method. One of "classical_ml"')
 parser.add_argument('-model', '--model', type=str,
@@ -60,9 +66,9 @@ parser.add_argument('-date', '--study_date', type=str,
 #                    help='which hypothesis?')
 parser.add_argument('-t', '--task', type=str,
                     help='task about integration or immigration?')
-parser.add_argument('-iter', '--n_run', type=int, #nargs='+',
+parser.add_argument('-n_run', '--n_run', type=int, #nargs='+',
                     help='The number of the respective random iteration')
-parser.add_argument('-iter_max', '--n_random_runs_total', type=int, #nargs='+',
+parser.add_argument('-n_rand_runs', '--n_random_runs_total', type=int, #nargs='+',
                     help='The total number of random iterations')
 parser.add_argument('-g', '--group', type=str,
                     help='group to filter training data by')
@@ -93,10 +99,11 @@ else:
                             "--vectorizer", "transformer",
                             "--model", "MoritzLaurer/DeBERTa-v3-xsmall-mnli-fever-anli-ling-binary",  #"google/flan-t5-small",
                             "--method", "nli",  #"generation",
-                            "--sample_size", "50", "--study_date", "20230601",
+                            "--sample_size", "100", "--sample_size_no_topic", "200",
+                            "--study_date", "20230601",
                             "--n_run", "1", "--n_random_runs_total", "3",
                             "--group", "randomall", "--n_tokens_remove", "0", "--max_length", "256",
-                            "--active_learning_iterations", "2",
+                            "--active_learning_iterations", "1",
                             #"--save_outputs"
                             ])
 
@@ -132,8 +139,8 @@ SEED_GLOBAL = 42
 np.random.seed(SEED_GLOBAL)
 
 # special variables for pimpo
-SAMPLE_NO_TOPIC = 100  # for number in test set
-TRAIN_NOTOPIC_PROPORTION = 0.4
+SAMPLE_NO_TOPIC = args.sample_size_no_topic  # for number in test set
+TRAIN_NOTOPIC_PROPORTION_TRAIN = 0.4
 
 # randomly assign different seeds for each run
 seed_runs_all = np.random.choice(range(1000), size=N_RANDOM_RUNS_TOTAL)
@@ -301,7 +308,7 @@ elif "pimpo" in DATASET:
     # unrealistic balanced sample without AL
     if AL_ITERATIONS == 0:
         # sample x% of training data for no topic, then share the remainder equally across classes
-        n_sample_notopic = int(MAX_SAMPLE * TRAIN_NOTOPIC_PROPORTION)
+        n_sample_notopic = int(MAX_SAMPLE * TRAIN_NOTOPIC_PROPORTION_TRAIN)
         n_sample_perclass = int((MAX_SAMPLE - n_sample_notopic) / (len(df_cl.label_text.unique()) - 1))
         df_train_samp1 = df_cl_group.groupby("label_text", as_index=False, group_keys=False).apply(
             lambda x: x.sample(min(n_sample_perclass, len(x)), random_state=SEED_RUN) if x.label_text.unique()[0] != "no_topic" else None)
@@ -454,10 +461,10 @@ if METHOD == "standard_dl":
 elif METHOD == "nli_void":
     HYPER_PARAMS = {'lr_scheduler_type': 'linear', 'learning_rate': 2e-5, 'num_train_epochs': 15, 'seed': SEED_GLOBAL, 'per_device_train_batch_size': 32, 'warmup_ratio': 0.40, 'weight_decay': 0.01, 'per_device_eval_batch_size': 200}  # "do_eval": False
 elif "nli" in METHOD:
-    HYPER_PARAMS = {'lr_scheduler_type': 'linear', 'learning_rate': 2e-5, 'num_train_epochs': 3, 'seed': SEED_GLOBAL, 'per_device_train_batch_size': 32, 'warmup_ratio': 0.40, 'weight_decay': 0.01, 'per_device_eval_batch_size': 200}  # "do_eval": False
+    HYPER_PARAMS = {'lr_scheduler_type': 'linear', 'learning_rate': 2e-5, 'num_train_epochs': 5, 'seed': SEED_GLOBAL, 'per_device_train_batch_size': 32, 'warmup_ratio': 0.40, 'weight_decay': 0.01, 'per_device_eval_batch_size': 200}  # "do_eval": False
 elif "generation" in METHOD:
     HYPER_PARAMS = {
-        'lr_scheduler_type': 'linear', 'learning_rate': 5e-4, 'num_train_epochs': 3, 'seed': SEED_GLOBAL, 'per_device_train_batch_size': 16, 'warmup_ratio': 0.20, 'weight_decay': 0.01, 'per_device_eval_batch_size': 64-32,
+        'lr_scheduler_type': 'linear', 'learning_rate': 5e-4, 'num_train_epochs': 5, 'seed': SEED_GLOBAL, 'per_device_train_batch_size': 16, 'warmup_ratio': 0.20, 'weight_decay': 0.01, 'per_device_eval_batch_size': 64-32,
         # ! need to set this to true, otherwise seq2seq-trainer is not used https://github.com/huggingface/transformers/blob/v4.28.1/src/transformers/trainer_seq2seq.py#L246
         "predict_with_generate": True, "gradient_checkpointing": False, #"gradient_accumulation_steps": 8,
     }
@@ -468,6 +475,11 @@ else:
 
 
 learner = ActiveLearner(seed=SEED_RUN)
+
+if GROUP == "randomall":
+    separate_testset = False
+else:
+    separate_testset = True
 
 learner.load_pd_dataset(df_corpus=df_corpus, df_test=df_test, df_train_seed=df_train_seed, text_column="text_prepared", label_column="label_text", separate_testset=False)
 
@@ -501,6 +513,7 @@ if METHOD == "nli":
 
 ### active learning loop
 n_iter = 0
+al_sample_label_distribution_lst = []
 
 while n_iter < AL_ITERATIONS:
     ## this is where manualo annotation would happen e.g. in Argilla
@@ -514,6 +527,11 @@ while n_iter < AL_ITERATIONS:
         prediction_gold_lst = [[prediction, gold] for prediction, gold in zip(learner.iteration_label_predicted_test, learner.iteration_label_gold_test)]
         print(prediction_gold_lst[:20])
 
+        # inspect label distribution from al samples
+        al_sample_label_distribution_iter = learner.df_corpus_al_sample["label_text"].value_counts()
+        al_sample_label_distribution_iter.name = n_iter
+        al_sample_label_distribution_lst.append(al_sample_label_distribution_iter)
+
         # with first dataset update, a dataset_train is added
         # with all updates, dataset_train and dataset_corpus is updated
         learner.update_dataset()
@@ -523,7 +541,7 @@ while n_iter < AL_ITERATIONS:
 
     # print results
     for key_iter, value_metrics_dic in learner.metrics.items():
-        print(f"Aggregate metrics for {key_iter}: ", {key: value_metrics_dic[key] for key in value_metrics_dic if key not in ["label_gold_raw", "label_predicted_raw"]})  # print metrics but without label lists
+        print(f"Aggregate metrics for {key_iter}: ", {key: value_metrics_dic[key] for key in value_metrics_dic if key not in ["eval_label_gold_raw", "eval_label_predicted_raw"]})  # print metrics but without label lists
 
     # new sampling run before updating the dataset. need new index_al_sample
     learner.sample_breaking_ties(n_sample_al=N_SAMPLES_PER_AL_ITER)
@@ -532,6 +550,35 @@ while n_iter < AL_ITERATIONS:
     print(f"\n\n    Iteration {n_iter} finished.\n\n")
     n_iter += 1
 
+
+### inspect results
+## plot metrics over iterations
+import matplotlib.pyplot as plt
+print("\nFinal results:\n")
+
+metrics_dic_lst = []
+n_sample = 0
+for key_iter, value_metrics_dic in learner.metrics.items():
+    metrics_dic_iter = {key: value_metrics_dic[key] for key in value_metrics_dic if key not in ["eval_label_gold_raw", "eval_label_predicted_raw"]}
+    metrics_dic_iter = {"iter_samp_total": n_sample, **metrics_dic_iter}
+    metrics_dic_lst.append(metrics_dic_iter)
+    n_sample += N_SAMPLES_PER_AL_ITER
+
+df_metrics = pd.DataFrame(metrics_dic_lst)
+print(df_metrics)
+#df_metrics.plot(x="iter", subplots=[("iter", "eval_f1_macro"), ("iter", "eval_f1_micro"), ("iter", "eval_accuracy_balanced")])
+df_metrics.plot(x="iter_samp_total", y="eval_f1_macro", grid=True)
+#df_metrics.plot(x="iter_samp_total", y="eval_f1_micro", grid=True)
+
+#df_metrics.plot(x="iter_samp_total", y="eval_accuracy_balanced")
+
+## plot label distribution over iterations
+df_label_dist = pd.DataFrame(al_sample_label_distribution_lst)
+print(df_label_dist)
+df_label_dist.plot(kind="bar", stacked=True, legend=True).legend(loc='center left', bbox_to_anchor=(1.0, 0.8))
+
+if not EXECUTION_TERMINAL:
+    plt.show()
 
 
 ### Evaluate
@@ -543,7 +590,8 @@ else:
     results_test = learner.metrics#[f"iter_{AL_ITERATIONS}"]  #compute_metrics_generation(dataset=dataset, model=trainer.model, tokenizer=tokenizer, hyperparams_dic=HYPER_PARAMS, config_params=config_params)
 
 print("\nTest results:")
-print(results_test)
+for dic in results_test:
+    print({key: value for key, value in dic.items() if key not in ["eval_label_gold_raw", "eval_label_predicted_raw"]})
 
 ## save results
 n_sample_str = MAX_SAMPLE
@@ -552,11 +600,11 @@ while len(str(n_sample_str)) <= 3:
 
 # df with separate row for each al iteration
 df_results = pd.DataFrame.from_dict(results_test, orient='index')
-print(df_results.head())
+#print(df_results[[ [col for col in df_results.columns if col not in ["eval_label_gold_raw", "eval_label_predicted_raw"]] ]].head())
 
 if SAVE_OUTPUTS:
     #df_results.to_csv(f"./data-classified/{DATASET}/df_results_{DATASET}_{GROUP}_samp{n_sample_str}_tokrm{N_TOKENS_REMOVE}_seed{SEED_RUN}_{DATE}.csv", index=False)
-    df_results.to_csv(f"./results/{DATASET}/df_results_{DATASET}_{GROUP}_{METHOD}_samp{n_sample_str}_seed{SEED_RUN}_{DATE}.csv", index=False)
+    df_results.to_csv(f"./results/{DATASET}/df_results_{DATASET}_{GROUP}_{METHOD}_samp{n_sample_str}_al_iter{AL_ITERATIONS}_seed{SEED_RUN}_{DATE}.csv", index=False)
 
 
 
