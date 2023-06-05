@@ -1,6 +1,6 @@
 #!/bin/bash
 # Set batch job requirements
-#SBATCH -t 00:30:00
+#SBATCH -t 00:45:00
 #SBATCH --partition=gpu
 #SBATCH --gpus=1
 #SBATCH --mail-type=BEGIN,END,FAIL
@@ -28,13 +28,15 @@ pip install -r requirements.txt
 
 dataset='pimpo'  # 'uk-leftright-econ', 'pimpo'
 task="pimpo-simple"  # "uk-leftright-simple", "pimpo"
-method='nli'  # standard_dl, nli, nli_long, nli_void, generation
-model='MoritzLaurer/DeBERTa-v3-xsmall-mnli-fever-anli-ling-binary'  #'MoritzLaurer/DeBERTa-v3-base-mnli-fever-docnli-ling-2c'  # "MoritzLaurer/DeBERTa-v3-base-mnli-fever-docnli-ling-2c", "google/flan-t5-base"
+method='generative'  # standard_dl, nli, nli_long, nli_void, generation
+model='google/flan-t5-base'  #'MoritzLaurer/DeBERTa-v3-large-mnli-fever-anli-ling-wanli'  #'MoritzLaurer/DeBERTa-v3-xsmall-mnli-fever-anli-ling-binary'  # "MoritzLaurer/DeBERTa-v3-base-mnli-fever-docnli-ling-2c", "google/flan-t5-base"
+model_size='base'
 vectorizer='transformer'
 group_lst=("randomall")  # ("random1") ("random2") ("random3") ("randomall") ("nld" "esp" "dnk" "deu") ("CHR" "LEF" "LIB" "NAT" "SOC")
 study_date=20230602
 sample_size=500
-sample_size_no_topic=5000
+sample_size_no_topic=50000
+sample_size_corpus=5000
 n_random_runs_total=1
 #n_tokens_remove_lst=(0 5 10)
 max_length=448
@@ -55,11 +57,11 @@ do
     echo "Variables iteration: group $group, and iteration $n_run"
     python analysis-transformers-run.py --dataset $dataset --task $task \
             --method $method --model $model --vectorizer $vectorizer --study_date $study_date \
-            --sample_size $sample_size --sample_size_no_topic $sample_size_no_topic  \
+            --sample_size $sample_size --sample_size_no_topic $sample_size_no_topic --sample_size_corpus $sample_size_corpus  \
             --n_random_runs_total $n_random_runs_total --n_run $n_run \
             --group $group --n_tokens_remove 0 --max_length $max_length --save_outputs \
             --active_learning_iterations $active_learning_iterations \
-            &> ./results/pimpo/logs/run-$method-$sample_size-$dataset-$group-$n_run-al_iter$active_learning_iterations-$study_date-logs.txt
+            &> ./results/pimpo/logs/run-$method-$model_size-$sample_size-$dataset-$group-$n_run-al_iter$active_learning_iterations-$study_date-logs.txt
   done
 done
 #done
