@@ -99,13 +99,13 @@ else:
     args = parser.parse_args(["--task", "pimpo-simple",  # pimpo, uk-leftright-simple, uk-leftright
                             "--dataset", "pimpo",  # uk-leftright-econ, pimpo
                             "--vectorizer", "transformer",
-                            "--model", "google/electra-small-discriminator",  #"MoritzLaurer/DeBERTa-v3-xsmall-mnli-fever-anli-ling-binary",  #"google/flan-t5-small",
-                            "--method", "generation",  #"nli_short",  #"generation",
-                            "--sample_size", "100", "--sample_size_no_topic", "5000",
+                            "--model", "MoritzLaurer/DeBERTa-v3-xsmall-mnli-fever-anli-ling-binary",  #"google/flan-t5-small",
+                            "--method", "standard_dl",   #"nli_short",  #"generative",
+                            "--sample_size", "100", "--sample_size_no_topic", "200",
                             "--study_date", "20230601",
                             "--n_run", "1", "--n_random_runs_total", "3",
                             "--group", "randomall", "--n_tokens_remove", "0", "--max_length", "256",
-                            "--active_learning_iterations", "0", "--sample_size_corpus", "500",
+                            "--active_learning_iterations", "1", "--sample_size_corpus", "300",
                             #"--save_outputs"
                             ])
 
@@ -160,11 +160,9 @@ MODEL_NAME_SHORT = MODEL_NAME.split("/")[-1]
 MODEL_NAME_SHORT = MODEL_NAME_SHORT[:26]  # longer names lead to file name length bugs before
 print(MODEL_NAME_SHORT)
 
-if ("nli" in MODEL_NAME.lower()) and ("generation" in METHOD.lower()):
+if ("nli" in MODEL_NAME.lower()) and ("generative" in METHOD.lower()):
     raise Exception(f"MODEL_NAME {MODEL_NAME} not implemented for METHOD {METHOD}")
-elif ("t5" in MODEL_NAME.lower()) and ("nli" in METHOD.lower() or "standard_dl" in METHOD.lower() or "disc" in METHOD.lower()):
-    raise Exception(f"MODEL_NAME {MODEL_NAME} not implemented for METHOD {METHOD}")
-elif ("electra" in MODEL_NAME.lower()) and ("generation" in METHOD.lower()):
+elif ("t5" in MODEL_NAME.lower()) and ("nli" in METHOD.lower() or "standard_dl" in METHOD.lower()):
     raise Exception(f"MODEL_NAME {MODEL_NAME} not implemented for METHOD {METHOD}")
 
 
@@ -238,9 +236,7 @@ elif VECTORIZER == "transformer":
         df_cl["text_prepared"] = df_cl["text_preceding_trans"].fillna('') + '  | The quote: "' + df_cl["text_original_trans"] + '" End of the quote |  ' + df_cl["text_following_trans"].fillna('')
     elif METHOD == "standard_dl":
         df_cl["text_prepared"] = df_cl["text_preceding_trans"].fillna('') + ' \n ' + df_cl["text_original_trans"] + ' \n ' + df_cl["text_following_trans"].fillna('')
-    elif METHOD == "generation":
-        df_cl["text_prepared"] = df_cl["text_preceding_trans"].fillna('') + '  | The quote: "' + df_cl["text_original_trans"] + '" End of the quote |  ' + df_cl["text_following_trans"].fillna('')
-    elif "disc" in METHOD:
+    elif METHOD == "generative":
         df_cl["text_prepared"] = df_cl["text_preceding_trans"].fillna('') + '  | The quote: "' + df_cl["text_original_trans"] + '" End of the quote |  ' + df_cl["text_following_trans"].fillna('')
 else:
     raise Exception(f"Vectorizer {VECTORIZER} or METHOD {METHOD} not implemented.")
@@ -325,7 +321,7 @@ elif "pimpo" in DATASET:
         print("df_train.label_text.value_counts:\n", df_train.label_text.value_counts())
 
     elif AL_ITERATIONS > 0:
-        if ("nli" in METHOD) or ("generation" in METHOD):
+        if ("nli" in METHOD) or ("generative" in METHOD):
             df_corpus = df_cl_group.copy(deep=True)
             df_train_seed = None
         elif METHOD == "standard_dl":
@@ -334,8 +330,6 @@ elif "pimpo" in DATASET:
             df_corpus = df_cl_group.copy(deep=True)
             df_train_seed = df_corpus.sample(n=int(MAX_SAMPLE/AL_ITERATIONS), random_state=SEED_RUN)
             df_corpus = df_corpus[~df_corpus.index.isin(df_train_seed.index)]
-        elif "disc" in METHOD:
-            raise NotImplementedError
 
         print("df_corpus.label_text.value_counts:\n", df_corpus.label_text.value_counts())
 
@@ -387,24 +381,24 @@ if "pimpo" in DATASET:
 
 
 
-### format data if NLI or generation
+### format data if NLI or generative
 
 ## NLI instructions
-if (METHOD == "nli_short") or (METHOD == "disc_short"):
+if METHOD == "nli_short":
     hypo_label_dic = {
         "neutral": "The quote is neutral towards immigration/integration or describes the status quo of immigration/integration.",
         "sceptical": "The quote is sceptical of immigration/integration.",
         "supportive": "The quote is supportive of immigration/integration.",
         "no_topic": "The quote is not about immigration/integration.",
     }
-elif (METHOD == "nli_long") or (METHOD == "disc_long"):
+elif METHOD == "nli_long":
     hypo_label_dic = {
         "neutral": "The quote is neutral towards immigration/integration or describes the status quo of immigration/integration, for example only stating facts or using technocratic language about immigration/integration",
         "sceptical": "The quote is sceptical of immigration/integration. Regarding immigration, the quote could mention the costs of immigration, be against migrant workers, state that foreign labour decreases natives' wages, that there are already enough refugees, refugees are actually economic migrants, be in favour of stricter immigration controls, or for exceptions to the freedom of movement in the EU. Regarding integration, the quote could make negative references to multiculturalism and diversity, underline the importance of ethnic homogeneity and national culture, call for immigrants to give up their culture of origin, warn of islamization, mention duties in order to stay in the country, demand integration tests, associate immigrant communities with problems or crimes, demand an oath of allegiance of immigrants, or underline ethnic criteria for receiving citizenship.",
         "supportive": "The quote is supportive of immigration/integration. Regarding immigration, the quote could mention the benefits of immigration, the need for migrant workers, international obligations to take in refugees, protection of human rights, in favour of family reunification or freedom of movement in the EU. Regarding integration, the quote could mention positive references to multiculturalism and diversity, underline cosmopolitan values towards immigrants, demand inclusion of immigrants, demand anti-discrimination policies based on ethnicity and origin, demand policies against racism, demand more rights for immigrants, or underline civic values instead of ethnic values for receiving citizenship.",
         "no_topic": "The quote is not about immigration/integration.",
     }
-elif (METHOD == "nli_void") or (METHOD == "disc_void"):
+elif METHOD == "nli_void":
     hypo_label_dic = {
         "neutral": "The quote is about category A.",
         "sceptical": "The quote is about category B.",
@@ -412,46 +406,36 @@ elif (METHOD == "nli_void") or (METHOD == "disc_void"):
         "no_topic": "The quote is about category D.",
     }
 # TODO: the hypotheses need to be in alphabetical order. double check that this is the case everywhere
-if ("nli" in METHOD) or ("disc" in METHOD):
+if "nli" in METHOD:
     # make keys in hypo_label_dic alphabetical
     hypo_label_dic = {k: hypo_label_dic[k] for k in sorted(hypo_label_dic.keys())}
 
-## generation instructions
+## generative instructions
 # TODO: need to somehow make sure that these instructions never get cut, but only the input text
-if METHOD == "generation":
-    # TODO: properly implement variations for instructions.
+if METHOD == "generative":
     instruction_short = """\n
-Which of the following categories applies best to the quote considering the context?
+Which of the following categories applies best to the quote considering the context above?
 A: The quote is neutral towards immigration/integration or describes the status quo of immigration/integration.
 B: The quote is sceptical of immigration/integration.
 C: The quote is supportive of immigration/integration.
 D: The quote is not about immigration/integration.
 Answer: """
-    label_text_map_generation = {"neutral": "A", "sceptical": "B", "supportive": "C", "no_topic": "D"}
+    label_text_map_generative = {"neutral": "A", "sceptical": "B", "supportive": "C", "no_topic": "D"}
 
-    instruction_short = """\n
-Which of the following categories applies best to the quote considering the context?
-neutral: The quote is neutral towards immigration/integration or describes the status quo of immigration/integration.
-sceptical: The quote is sceptical of immigration/integration.
-supportive: The quote is supportive of immigration/integration.
-other: The quote is not about immigration/integration.
-Answer: """
-    label_text_map_generation = {"neutral": "neutral", "sceptical": "sceptical", "supportive": "supportive", "no_topic": "other"}
-
-"""if "generation" in METHOD:
+if "generative" in METHOD:
     # adapt input text
     df_corpus["text_prepared"] = df_corpus["text_prepared"] + instruction_short
     # adapt label
     df_corpus["label_text_original"] = df_corpus["label_text"]
-    df_corpus["label_text"] = df_corpus["label_text"].map(label_text_map_generation)
+    df_corpus["label_text"] = df_corpus["label_text"].map(label_text_map_generative)
     if ("random" in GROUP) and ("randomall" not in GROUP):
         df_test["text_prepared"] = df_test["text_prepared"] + instruction_short
         df_test["label_text_original"] = df_test["label_text"]
-        df_test["label_text"] = df_test["label_text"].map(label_text_map_generation)"""
+        df_test["label_text"] = df_test["label_text"].map(label_text_map_generative)
 
 
-## parameters relevant for generation models
-if METHOD == "generation":
+## parameters relevant for generative models
+if METHOD == "generative":
     model_params = {
         #"torch_dtype": torch.float16,  #torch.bfloat16, torch.float16
         #load_in_8bit=True,
@@ -460,8 +444,8 @@ if METHOD == "generation":
         "offload_state_dict": True
     }
     config_params = {
-        "max_new_tokens": 5,
-        "num_beams": 3,
+        "max_new_tokens": 4,
+        "num_beams": 2,
         #"generation_num_beams": 5,  # https://github.com/huggingface/transformers/blob/68287689f2f0d8b7063c400230b3766987abf18d/src/transformers/training_args_seq2seq.py#L42
         "num_return_sequences": 1,
         "temperature": 0,  # default: 1.0
@@ -491,23 +475,16 @@ if METHOD == "standard_dl":
         n_steps += steps_one_epoch  # = steps_one_epoch
     print("Epochs: ", n_epochs)
     print("Steps: ", n_steps)
-    HYPER_PARAMS = {'lr_scheduler_type': 'constant', 'learning_rate': 2e-5, 'num_train_epochs': n_epochs, 'seed': SEED_RUN, 'per_device_train_batch_size': 32, 'warmup_ratio': 0.06, 'weight_decay': 0.01, 'per_device_eval_batch_size': 200,
-                    "evaluation_strategy": "no", "save_strategy": "no"}  # "do_eval": False
+    HYPER_PARAMS = {'lr_scheduler_type': 'constant', 'learning_rate': 2e-5, 'num_train_epochs': n_epochs, 'seed': SEED_RUN, 'per_device_train_batch_size': 32, 'warmup_ratio': 0.06, 'weight_decay': 0.01, 'per_device_eval_batch_size': 200}  # "do_eval": False
 elif METHOD == "nli_void":
-    HYPER_PARAMS = {'lr_scheduler_type': 'linear', 'learning_rate': 2e-5, 'num_train_epochs': 15, 'seed': SEED_RUN, 'per_device_train_batch_size': 32, 'warmup_ratio': 0.40, 'weight_decay': 0.01, 'per_device_eval_batch_size': 200,
-                    "evaluation_strategy": "no", "save_strategy": "no"}  # "do_eval": False
+    HYPER_PARAMS = {'lr_scheduler_type': 'linear', 'learning_rate': 2e-5, 'num_train_epochs': 15, 'seed': SEED_RUN, 'per_device_train_batch_size': 32, 'warmup_ratio': 0.40, 'weight_decay': 0.01, 'per_device_eval_batch_size': 200}  # "do_eval": False
 elif "nli" in METHOD:
-    HYPER_PARAMS = {'lr_scheduler_type': 'linear', 'learning_rate': 2e-5, 'num_train_epochs': 5, 'seed': SEED_RUN, 'per_device_train_batch_size': 32, 'warmup_ratio': 0.40, 'weight_decay': 0.01, 'per_device_eval_batch_size': 200,
-                    "evaluation_strategy": "no", "save_strategy": "no"}  # "do_eval": False
-elif "disc" in METHOD:
-    HYPER_PARAMS = {'lr_scheduler_type': 'linear', 'learning_rate': 2e-5, 'num_train_epochs': 10, 'seed': SEED_RUN, 'per_device_train_batch_size': 32, 'warmup_ratio': 0.40, 'weight_decay': 0.01, 'per_device_eval_batch_size': 200,
-                    "logging_steps": 1, "evaluation_strategy": "epoch", "save_strategy": "epoch"}  # "do_eval": False
-elif "generation" in METHOD:
+    HYPER_PARAMS = {'lr_scheduler_type': 'linear', 'learning_rate': 2e-5, 'num_train_epochs': 5, 'seed': SEED_RUN, 'per_device_train_batch_size': 32, 'warmup_ratio': 0.40, 'weight_decay': 0.01, 'per_device_eval_batch_size': 200}  # "do_eval": False
+elif "generative" in METHOD:
     HYPER_PARAMS = {
         'lr_scheduler_type': 'linear', 'learning_rate': 5e-4, 'num_train_epochs': 5, 'seed': SEED_RUN, 'per_device_train_batch_size': 16, 'warmup_ratio': 0.20, 'weight_decay': 0.01, 'per_device_eval_batch_size': 64-32,
         # ! need to set this to true, otherwise seq2seq-trainer is not used https://github.com/huggingface/transformers/blob/v4.28.1/src/transformers/trainer_seq2seq.py#L246
         "predict_with_generate": True, "gradient_checkpointing": False, #"gradient_accumulation_steps": 8,
-        "evaluation_strategy": "no", "save_strategy": "no"
     }
 else:
     raise Exception("Method not implemented for hps")
@@ -515,20 +492,168 @@ else:
 
 
 
+learner = ActiveLearner(seed=SEED_RUN)
+
+if GROUP == "randomall":
+    separate_testset = False
+else:
+    separate_testset = True
+
+learner.load_pd_dataset(df_corpus=df_corpus, df_test=df_test, df_train_seed=df_train_seed, text_column="text_prepared", label_column="label_text", separate_testset=separate_testset)
+
+if "nli" in METHOD:
+    learner.format_pd_dataset_for_nli_test(hypo_label_dic=hypo_label_dic)
+
+# only for first run
+learner.load_model_tokenizer(
+    model_name=MODEL_NAME, method=METHOD if "nli" not in METHOD else "nli",
+    model_max_length=MODEL_MAX_LENGTH,
+    config_params=config_params, model_params=model_params,
+    label_text_alphabetical=np.sort(df_cl.label_text.unique())
+)
+
+learner.tokenize_dataset(max_output_tokens=0 if METHOD != "generative" else config_params["max_new_tokens"])  # config_params["max_new_tokens"]
+
+learner.set_train_args(hyperparams_dic=HYPER_PARAMS, training_directory=TRAINING_DIRECTORY, disable_tqdm=False, evaluation_strategy="no")
+
+## first zero-shot sampling & testing run, no training
+# for first sample for first training run
+# metrics currently come from texts in df_corpus that were not yet sampled
+if ("nli" in METHOD) or ("generative" in METHOD):
+    learner.train_test_infer()
+
+# apply sampling strategy
+#learner.min_certainty(n_sample_al=N_SAMPLE_AL)
+if "nli" in METHOD:
+    learner.sample_breaking_ties(n_sample_al=N_SAMPLES_PER_AL_ITER)
+    print(learner.df_corpus_al_sample.head())
+if "generative" in METHOD:
+    learner.min_certainty(n_sample_al=N_SAMPLES_PER_AL_ITER)
+
+### active learning loop
+n_iter = 0
+al_sample_label_distribution_lst = []
+
+while n_iter < AL_ITERATIONS:
+    ## this is where manualo annotation would happen e.g. in Argilla
+    # dataset_train in update below needs to ingest the manual annotations created here (or oracle labels)
+    #label_annotation = learner.df_corpus_al_sample["label"]
+
+    if (METHOD == "standard_dl") & (n_iter == 0):
+        n_iter += 1
+        pass
+    else:
+        # visual inspection: compare predicted labels with gold labels
+        if separate_testset:
+            prediction_gold_lst = [[prediction, gold] for prediction, gold in zip(learner.iteration_label_predicted_test, learner.iteration_label_gold_test)]
+            print(prediction_gold_lst[:5])
+        else:
+            prediction_gold_lst = [[prediction, gold] for prediction, gold in zip(learner.iteration_label_predicted_corpus, learner.iteration_label_gold_corpus)]
+            print(prediction_gold_lst[:5])
+
+        # inspect label distribution from al samples
+        al_sample_label_distribution_iter = learner.df_corpus_al_sample["label_text"].value_counts()
+        al_sample_label_distribution_iter.name = n_iter
+        al_sample_label_distribution_lst.append(al_sample_label_distribution_iter)
+        print("Current label distribution in sample:\n", al_sample_label_distribution_lst)
+
+        # with first dataset update, a dataset_train is added
+        # with all updates, dataset_train and dataset_corpus is updated
+        learner.update_dataset()
+
+    # training run
+    learner.train_test_infer()
+
+    # print results
+    for key_iter, value_metrics_dic in learner.metrics.items():
+        print(f"Aggregate metrics for {key_iter}: ", {key: value_metrics_dic[key] for key in value_metrics_dic if key not in ["eval_label_gold_raw", "eval_label_predicted_raw"]})  # print metrics but without label lists
+
+    # new sampling run before updating the dataset. need new index_al_sample
+    if "generative" in METHOD:
+        learner.min_certainty(n_sample_al=N_SAMPLES_PER_AL_ITER)
+    else:
+        learner.sample_breaking_ties(n_sample_al=N_SAMPLES_PER_AL_ITER)
+    #learner.min_certainty(n_sample_al=N_SAMPLE_AL)
+
+    print(f"\n\n    Iteration {n_iter} finished.\n\n")
+    n_iter += 1
+
+
+### inspect results
+## plot metrics over iterations
+import matplotlib.pyplot as plt
+print("\nFinal results:\n")
+
+metrics_dic_lst = []
+n_sample = 0
+for key_iter, value_metrics_dic in learner.metrics.items():
+    metrics_dic_iter = {key: value_metrics_dic[key] for key in value_metrics_dic if key not in ["eval_label_gold_raw", "eval_label_predicted_raw"]}
+    metrics_dic_iter = {"iter_samp_total": n_sample, **metrics_dic_iter}
+    metrics_dic_lst.append(metrics_dic_iter)
+    n_sample += N_SAMPLES_PER_AL_ITER
+
+df_metrics = pd.DataFrame(metrics_dic_lst)
+print(df_metrics)
+#df_metrics.plot(x="iter", subplots=[("iter", "eval_f1_macro"), ("iter", "eval_f1_micro"), ("iter", "eval_accuracy_balanced")])
+df_metrics.plot(x="iter_samp_total", y="eval_f1_macro", grid=True)
+#df_metrics.plot(x="iter_samp_total", y="eval_f1_micro", grid=True)
+
+#df_metrics.plot(x="iter_samp_total", y="eval_accuracy_balanced")
+
+## plot label distribution over iterations
+df_label_dist = pd.DataFrame(al_sample_label_distribution_lst)
+print(df_label_dist)
+df_label_dist.plot(kind="bar", stacked=True, legend=True).legend(loc='center left', bbox_to_anchor=(1.0, 0.8))
+
+if not EXECUTION_TERMINAL:
+    plt.show()
+
+
+### Evaluate
+# test on test set
+if METHOD != "generative":
+    results_test = learner.metrics#[f"iter_{AL_ITERATIONS}"] #trainer.evaluate(eval_dataset=dataset["test"])  # eval_dataset=encoded_dataset["test"]
+else:
+    # ! will not contain certain elements like inference speed, loss
+    results_test = learner.metrics#[f"iter_{AL_ITERATIONS}"]  #compute_metrics_generation(dataset=dataset, model=trainer.model, tokenizer=tokenizer, hyperparams_dic=HYPER_PARAMS, config_params=config_params)
+
+print("\nTest results:")
+for key_iter, value_metrics_dic in results_test.items():
+    print({key: value for key, value in value_metrics_dic.items() if key not in ["eval_label_gold_raw", "eval_label_predicted_raw"]})
+
+## save results
+n_sample_str = MAX_SAMPLE
+while len(str(n_sample_str)) <= 3:
+    n_sample_str = "0" + str(n_sample_str)
+
+# df with separate row for each al iteration
+df_results = pd.DataFrame.from_dict(results_test, orient='index')
+#print(df_results[[ [col for col in df_results.columns if col not in ["eval_label_gold_raw", "eval_label_predicted_raw"]] ]].head())
+
+if SAVE_OUTPUTS:
+    #df_results.to_csv(f"./data-classified/{DATASET}/df_results_{DATASET}_{GROUP}_samp{n_sample_str}_tokrm{N_TOKENS_REMOVE}_seed{SEED_RUN}_{DATE}.csv", index=False)
+    df_results.to_csv(f"./results/{DATASET}/df_results_{DATASET}_{GROUP}_{METHOD}_samp{n_sample_str}_al_iter{AL_ITERATIONS}_seed{SEED_RUN}_{DATE}.csv", index=False)
 
 
 
-#### break where non-active learning code starts
+
+
+print("\nScript done.\n\n")
+assert 1 == 2, ("Script done.")
+#sys.exit(0)
+
+
+
 
 
 # format data
 if METHOD in ["standard_dl", "dl_embed", "classical_ml"]:
     df_train_format = df_train.copy(deep=True)
     df_test_format = df_test.copy(deep=True)
-elif ("nli" in METHOD) or ("disc" in METHOD):
+elif "nli" in METHOD:
     df_train_format = format_nli_trainset(df_train=df_train, hypo_label_dic=hypo_label_dic, random_seed=SEED_RUN)
     df_test_format = format_nli_testset(df_test=df_test, hypo_label_dic=hypo_label_dic)
-elif "generation" in METHOD:
+elif "generative" in METHOD:
     df_train_format = df_train.copy(deep=True)
     df_test_format = df_test.copy(deep=True)
     # adapt input text
@@ -537,8 +662,8 @@ elif "generation" in METHOD:
     # adapt label
     df_train_format["label_text_original"] = df_train_format["label_text"]
     df_test_format["label_text_original"] = df_test_format["label_text"]
-    df_train_format["label_text"] = df_train_format["label_text"].map(label_text_map_generation)
-    df_test_format["label_text"] = df_test_format["label_text"].map(label_text_map_generation)
+    df_train_format["label_text"] = df_train_format["label_text"].map(label_text_map_generative)
+    df_test_format["label_text"] = df_test_format["label_text"].map(label_text_map_generative)
 
 
 
@@ -546,22 +671,14 @@ elif "generation" in METHOD:
 ##### train classifier
 label_text_alphabetical = np.sort(df_cl.label_text.unique())
 
-if "nli" in METHOD:
-    method_short = "nli"
-elif "disc" in METHOD:
-    method_short = "disc"
-else:
-    method_short = METHOD
-
-
-model, tokenizer = load_model_tokenizer(model_name=MODEL_NAME, method=method_short,  #METHOD if "nli" not in METHOD else "nli",
+model, tokenizer = load_model_tokenizer(model_name=MODEL_NAME, method=METHOD if "nli" not in METHOD else "nli",
                                         label_text_alphabetical=label_text_alphabetical, model_max_length=MODEL_MAX_LENGTH,
                                         model_params=model_params, config_params=config_params)
 
 
 #### tokenize
 
-dataset = tokenize_datasets(df_train_samp=df_train_format, df_test=df_test_format, tokenizer=tokenizer, method=method_short,  #METHOD if "nli" not in METHOD else "nli",
+dataset = tokenize_datasets(df_train_samp=df_train_format, df_test=df_test_format, tokenizer=tokenizer, method=METHOD if "nli" not in METHOD else "nli",
                             max_length=MODEL_MAX_LENGTH, config_params=config_params)
 
 
@@ -576,14 +693,14 @@ dataset = tokenize_datasets(df_train_samp=df_train_format, df_test=df_test_forma
 # FP16 if cuda and if not mDeBERTa
 fp16_bool = True if torch.cuda.is_available() else False
 if "mDeBERTa".lower() in MODEL_NAME.lower(): fp16_bool = False  # mDeBERTa does not support FP16 yet
-# TODO: can fp16 cause issues with generation models?
+# TODO: can fp16 cause issues with generative models?
 fp16 = False
 
-train_args = set_train_args(hyperparams_dic=HYPER_PARAMS, training_directory=TRAINING_DIRECTORY, method=method_short,   #METHOD if "nli" not in METHOD else "nli",
-                            disable_tqdm=False, fp16=fp16_bool)
+train_args = set_train_args(hyperparams_dic=HYPER_PARAMS, training_directory=TRAINING_DIRECTORY, method=METHOD if "nli" not in METHOD else "nli",
+                            disable_tqdm=False, evaluation_strategy="no", fp16=fp16_bool)
 
 trainer = create_trainer(model=model, tokenizer=tokenizer, encoded_dataset=dataset, train_args=train_args,
-                         method=method_short, label_text_alphabetical=label_text_alphabetical)
+                         method=METHOD if "nli" not in METHOD else "nli", label_text_alphabetical=label_text_alphabetical)
 
 # train
 trainer.train()
@@ -592,17 +709,14 @@ trainer.train()
 
 ### Evaluate
 # test on test set
-if METHOD != "generation":
+if METHOD != "generative":
     results_test = trainer.evaluate(eval_dataset=dataset["test"])  # eval_dataset=encoded_dataset["test"]
 else:
     # ! will not contain certain elements like inference speed, loss
     results_test = compute_metrics_generation(dataset=dataset, model=trainer.model, tokenizer=tokenizer, hyperparams_dic=HYPER_PARAMS, config_params=config_params)
 
 print("\nTest results:")
-for key_iter, value_metrics in results_test.items():
-    if key_iter not in ["eval_label_gold_raw", "eval_label_predicted_raw"]:
-        print(f"{key_iter}: {value_metrics}")
-    #print({key: value for key, value in value_metrics_dic.items() if key not in ["eval_label_gold_raw", "eval_label_predicted_raw"]})
+print(results_test)
 
 ## save results
 n_sample_str = MAX_SAMPLE
@@ -613,10 +727,6 @@ df_results = pd.DataFrame([results_test])
 if SAVE_OUTPUTS:
     #df_results.to_csv(f"./data-classified/{DATASET}/df_results_{DATASET}_{GROUP}_samp{n_sample_str}_tokrm{N_TOKENS_REMOVE}_seed{SEED_RUN}_{DATE}.csv", index=False)
     df_results.to_csv(f"./results/{DATASET}/df_results_{DATASET}_{GROUP}_{METHOD}_samp{n_sample_str}_al_iter{AL_ITERATIONS}seed{SEED_RUN}_{DATE}.csv", index=False)
-
-
-
-print("\nScript done.\n\n")
 
 
 
@@ -665,6 +775,8 @@ elif TASK == "uk-leftright-simple":
 
 
 
+
+print("\nScript done.\n\n")
 
 
 

@@ -10,6 +10,7 @@ import copy
 import numpy as np
 import ast
 import tqdm
+import random
 
 #np.random.seed(42)
 
@@ -122,6 +123,14 @@ def load_model_tokenizer(model_name=None, method=None, label_text_alphabetical=N
         model = AutoModelForSeq2SeqLM.from_pretrained(model_name, **model_params);
         generation_config = GenerationConfig.from_pretrained(model_name, **config_params)
         model.generation_config = generation_config
+    elif method == "disc":
+        from transformers import ElectraConfig
+        tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True, model_max_length=model_max_length);
+        config_electra = ElectraConfig.from_pretrained(model_name)
+        config_electra.span_rep_type = "average"  # "average"/"cls"
+        model = ElectraForFewShot.from_pretrained(model_name, config=config_electra)
+
+
 
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -162,7 +171,7 @@ def tokenize_datasets(df_train_samp=None, df_test=None, tokenizer=None, method=N
         return model_inputs
 
 
-    if ("nli" in method) or (method == "nsp"):
+    if ("nli" in method) or (method == "nsp") or (method == "disc"):
         encoded_dataset["train"] = dataset["train"].map(tokenize_func_nli, batched=True)  # batch_size=len(df_train)
         encoded_dataset["test"] = dataset["test"].map(tokenize_func_nli, batched=True)  # batch_size=len(df_train)
     elif method == "standard_dl":
@@ -254,8 +263,8 @@ def compute_metrics_nli_binary(eval_pred, label_text_alphabetical=None):
     #print("Prediction chunks per permise: ", prediction_chunks_lst)
     #print("Label chunks per permise: ", label_chunks_lst)
 
-    print("Highest probability prediction per premise: ", hypo_position_highest_prob)
-    print("Correct label per premise: ", label_position_gold)
+    print("Highest probability prediction per premise: ", hypo_position_highest_prob[:20])
+    print("Correct label per premise: ", label_position_gold[:20])
 
     #print(hypo_position_highest_prob)
     #print(label_position_gold)
@@ -406,7 +415,76 @@ def compute_metrics_generation(dataset=None, model=None, tokenizer=None, hyperpa
     print("Aggregate metrics: ", {key: metrics[key] for key in metrics if key not in ["eval_label_gold_raw", "eval_label_predicted_raw"]} )  # print metrics but without label lists
     print("Detailed metrics: ", classification_report(labels_gold, labels_pred, sample_weight=None, digits=2, output_dict=True,  #labels=np.sort(pd.factorize(label_text_alphabetical, sort=True)[0]), target_names=label_text_alphabetical,
                                 zero_division='warn'), "\n")
+
+
     return metrics
+
+
+def compute_metrics_electra(eval_pred, label_text_alphabetical=None):
+    predictions, labels = eval_pred
+    print(labels.shape)
+    print(predictions.shape)
+
+    # scale logits with sigmoid
+    logits_sigmoid = torch.sigmoid(torch.tensor(predictions).float())
+    print(logits_sigmoid[:20])
+
+    ## reformat model output to enable calculation of standard metrics
+    # split in chunks with predictions for each hypothesis for one unique premise
+    def chunks(lst, n):  # Yield successive n-sized chunks from lst. https://stackoverflow.com/questions/312443/how-do-you-split-a-list-into-evenly-sized-chunks
+        for i in range(0, len(lst), n):
+            yield lst[i:i + n]
+
+    # for each chunk/premise, select the most likely hypothesis
+    softmax = torch.nn.Softmax(dim=1)
+    prediction_chunks_lst = list(chunks(logits_sigmoid, len(set(label_text_alphabetical)) ))
+    hypo_position_highest_prob = []
+    for i, chunk in enumerate(prediction_chunks_lst):
+        #hypo_position_highest_prob.append(np.argmax(np.array(chunk)[:, 0]))  # only accesses the first column of the array, i.e. the entailment/true prediction logit of all hypos and takes the highest one
+        #hypo_position_highest_prob.append(np.argmin(np.array(chunk)))
+        # to handle situation where duplicates among smallest values. issue: np.argmin would always just return the first value among duplicates, which defaults to a specific class
+        # this code first selects the smallest values and then randomly selects an index/label in case there are duplicates
+        def indices_of_smallest_values(arr):
+            smallest_value = np.min(arr)
+            smallest_value_indices = np.where(arr == smallest_value)[0]
+            return smallest_value_indices.tolist()
+        index_min = indices_of_smallest_values(np.array(chunk))
+        if len(index_min) > 0:
+            index_min = random.choice(index_min)
+        hypo_position_highest_prob.append(index_min)
+
+    print(np.array(chunk))
+
+    label_chunks_lst = list(chunks(labels, len(set(label_text_alphabetical)) ))
+    label_position_gold = []
+    for chunk in label_chunks_lst:
+        label_position_gold.append(np.argmin(chunk))  # argmin to detect the position of the 0 among the 1s
+
+    print("Highest probability prediction per premise: ", hypo_position_highest_prob[:20])
+    print("Correct label per premise: ", label_position_gold[:20])
+
+    ### calculate standard metrics
+    precision_macro, recall_macro, f1_macro, _ = precision_recall_fscore_support(label_position_gold, hypo_position_highest_prob, average='macro')  # https://scikit-learn.org/stable/modules/generated/sklearn.metrics.precision_recall_fscore_support.html
+    precision_micro, recall_micro, f1_micro, _ = precision_recall_fscore_support(label_position_gold, hypo_position_highest_prob, average='micro')  # https://scikit-learn.org/stable/modules/generated/sklearn.metrics.precision_recall_fscore_support.html
+    acc_balanced = balanced_accuracy_score(label_position_gold, hypo_position_highest_prob)
+    acc_not_balanced = accuracy_score(label_position_gold, hypo_position_highest_prob)
+    metrics = {'eval_f1_macro': f1_macro,
+               'eval_f1_micro': f1_micro,
+               'eval_accuracy_balanced': acc_balanced,
+               'eval_accuracy': acc_not_balanced,
+               'eval_precision_macro': precision_macro,
+               'eval_recall_macro': recall_macro,
+               'eval_precision_micro': precision_micro,
+               'eval_recall_micro': recall_micro,
+               'eval_label_gold_raw': label_position_gold,
+               'eval_label_predicted_raw': hypo_position_highest_prob
+               }
+    print("Aggregate metrics: ", {key: metrics[key] for key in metrics if key not in ["eval_label_gold_raw", "eval_label_predicted_raw"]} )  # print metrics but without label lists
+    print("Detailed metrics: ", classification_report(label_position_gold, hypo_position_highest_prob, labels=np.sort(pd.factorize(label_text_alphabetical, sort=True)[0]), target_names=label_text_alphabetical, sample_weight=None, digits=2, output_dict=True,
+                                zero_division='warn'), "\n")
+
+    return metrics
+
 
 
 ### Define trainer and hyperparameters
@@ -420,7 +498,7 @@ def set_train_args(hyperparams_dic=None, training_directory=None, disable_tqdm=F
             logging_dir=f"./{training_directory}",  # f'./{training_directory}',  #f'./logs/{training_directory}',
             **hyperparams_dic,
             **kwargs,
-            save_strategy="no",  # options: "no"/"steps"/"epoch"
+            #save_strategy="no",  # options: "no"/"steps"/"epoch"
             save_total_limit=10,  # If a value is passed, will limit the total amount of checkpoints. Deletes the older checkpoints in output_dir
             logging_strategy="epoch",
             report_to="all",  # "all"
@@ -432,7 +510,7 @@ def set_train_args(hyperparams_dic=None, training_directory=None, disable_tqdm=F
             logging_dir=f"./{training_directory}", #f'./{training_directory}',  #f'./logs/{training_directory}',
             **hyperparams_dic,
             **kwargs,
-            save_strategy="no",  # options: "no"/"steps"/"epoch"
+            #save_strategy="no",  # options: "no"/"steps"/"epoch"
             save_total_limit=10,             # If a value is passed, will limit the total amount of checkpoints. Deletes the older checkpoints in output_dir
             logging_strategy="epoch",
             report_to="all",  # "all"
@@ -451,6 +529,8 @@ def create_trainer(model=None, tokenizer=None, encoded_dataset=None, train_args=
         # ! Seq2SeqTrainer does not work well with compute metrics/seems buggy
         # ! need to calculate metrics separately
         pass
+    elif method == "disc":
+        compute_metrics = compute_metrics_electra
     else:
         raise Exception(f"Compute metrics for trainer not specified correctly: {method}")
 
@@ -500,81 +580,74 @@ def clean_memory():
 
 
 
+from transformers.models.electra.modeling_electra import ElectraForPreTraining, ElectraForPreTrainingOutput
+from torch import nn
 
-## test with data augmentation via back translation. Not used in the end, did not add value.
-#from easynmt import EasyNMT
-#import random
-# ! current version does not keep balance between entail vs not-entail. need to work with .label somewhere
-#df_train_samp_aug.label.value_counts()
-"""
-def aug_back_translation(df=None, languages=None, n_texts_per_class_agument=None, random_seed=42):
-  random.seed(random_seed) 
-  ## multiply rows to target number of texts per label
-  df_multiplied = []
-  for group_name, group_df in df.groupby(by="label_text", group_keys=False, as_index=False, sort=False):
-    sample_divmod = divmod(n_texts_per_class_agument, len(group_df))  # output e.g.: (2, 10) if divisible 2 times and then 10 samples remaining
-    if sample_divmod[0] > 0:  # multiply df if n_texts_per_class_agument fully divisble by (>) len(group_df)
-      df_multiplied_fully = pd.concat([group_df] * sample_divmod[0])
-      df_multiplied.append(df_multiplied_fully)
-      df_multiplied_remainder = group_df.sample(n=sample_divmod[1], random_state=42)
-      df_multiplied.append(df_multiplied_remainder)
-    else:  # in case n_texts_per_class_agument < len(group_df). No multiplication necessary
-      df_multiplied.append(group_df)
-  df_multiplied = pd.concat(df_multiplied)
-  assert len(df_multiplied.text.unique()) == len(df.text.unique())
+class ElectraForFewShot(ElectraForPreTraining):
+    def __init__(self, config):
+        super().__init__(config)
 
-  # add language columns with random language per text. creates random text-language pairs
-  col_lang = [random.choice(languages) for _ in range(len(df_multiplied))]
-  df_multiplied["lang_augment"] = col_lang
-  df_multiplied.rename(columns={"text": "text_original"}, inplace=True)
+    def forward(
+        self,
+        input_ids=None,
+        attention_mask=None,
+        token_type_ids=None,
+        position_ids=None,
+        head_mask=None,
+        inputs_embeds=None,
+        labels=None,
+        output_attentions=None,
+        output_hidden_states=None,
+        return_dict=None,
+        token_start=None,
+        token_end=None,
+    ):
+        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
 
-  ## back-translation 
-  # do translation on unique text language pairs and merge text language pairs later will full multiplied df to save computational costs
-  df_multiplied_short = df_multiplied[~df_multiplied.duplicated(subset=["text_original", "lang_augment"], keep='first')].copy(deep=True)
+        discriminator_hidden_states = self.electra(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            token_type_ids=token_type_ids,
+            position_ids=position_ids,
+            head_mask=head_mask,
+            inputs_embeds=inputs_embeds,
+            output_attentions=output_attentions,
+            output_hidden_states=output_hidden_states,  #output_hidden_states,
+            return_dict=return_dict,
+        )
+        logits = self.discriminator_predictions(discriminator_hidden_states[0])
 
-  def back_translate(df):
-    lang = df.lang_augment.iloc[0]
-    text_trans = translator.translate(df.text_original.tolist(), target_lang=lang, source_lang='en')
-    text_backtrans = translator.translate(text_trans, target_lang='en', source_lang=lang)
-    return pd.DataFrame(data={"text_backtrans": text_backtrans, "text_original": df.text_original, "text_trans": text_trans, "lang_augment": [lang]*len(text_backtrans)})
+        if self.config.span_rep_type == "average":
+            ## get logits only for relevant tokens
+            # get indices where the value is 102, the [SEP] token, separating the text from the "hypothesis"
+            indices_sep = (input_ids == 102).nonzero()
+            # extract the logits of the span of tokens between the [SEP] tokens
+            logits_span_lst = []
+            for i, j in zip(range(0, len(indices_sep)-1, 2), range(len(indices_sep))): # step of 2 as every two "102" denote a span
+                if indices_sep[i][0] == indices_sep[i+1][0]: # Ensure indices are in the same row
+                    logits_span = logits[indices_sep[i][0], indices_sep[i][1]+1:indices_sep[i+1][1]] # Extract span
+                    # try adding the CLS logit
+                    #logits_span = torch.cat((logits[j,0].unsqueeze(0), logits_span))
+                    logits_span_lst.append(logits_span) # convert tensor to list
 
-  df_multiplied_short_trans = df_multiplied_short.groupby(by="lang_augment", group_keys=False, as_index=False, sort=False).apply(back_translate)
+            # calculate mean of logits for each span
+            logits = torch.stack([torch.mean(span) for span in logits_span_lst]).to(self.device)
+        elif self.config.span_rep_type == "cls":
+            logits = logits[:,0]
+        else:
+            raise NotImplementedError
 
-  ## create final augmented df
-  df_aug = df_multiplied.merge(df_multiplied_short_trans, how='left', on=["text_original", "lang_augment"])
-  df_aug.rename(columns={"text_backtrans": "text"}, inplace=True)
-  df_aug = df_aug[["label_d_text", "label_subcat_text", "text", "text_original", "label", "label_d", "label_subcat", "label_text", "hypothesis", "lang_augment", "text_trans"]]
+        loss_fct = nn.BCEWithLogitsLoss()
+        loss = loss_fct(logits, labels.float().to(self.device))
+        #print(loss)
 
-  return df_aug"""
+        if not return_dict:
+            output = (logits,) + discriminator_hidden_states[1:]
+            return ((loss,) + output) if loss is not None else output
 
-#df_train_samp_aug = aug_back_translation(df=df_train_samp, languages=LANGUAGES_AUGMENT, n_texts_per_class_agument=N_TEXTS_PER_CLASS_AUGMENT)
-#df_train_samp_aug.label_text.value_counts()
-
-
-
-
-### random sample, filling up at least 3 per class
-"""def random_sample_fill(df_train=None, n_sample_per_class=None, random_seed=42, df=None):
-  df_sample_random = df_train.sample(n=min(n_sample_per_class*len(df_train.label_text.unique()), len(df_train)), random_state=random_seed)
-  if len(df_sample_random) == 0:  # for zero-shot
-    print("Number of training examples after sampling: ", len(df_sample_random))
-    print(f"n_sample_per_class is {n_sample_per_class} and n_classes is {len(df_train.label_text.unique())}")
-    return df_sample_random.copy(deep=True) 
-
-  ## fill up to have at least 3 per class
-  n_min_per_class = 3
-  if sum(df_sample_random.label_text.value_counts() >= n_min_per_class) != len(df.label_text.unique()):
-    labels_count_insufficient_sample = df_sample_random.label_text.value_counts().where(lambda x: x < n_min_per_class).dropna()  # returns series with label_names and number of hits for predicted labels with less than 16 or n_sample_per_class hits
-    # add labels and counts which don't appear a single time in first df_sample_random
-    label_missing = [label for label in df.label_text.unique() if label not in df_sample_random.label_text.unique()]
-    label_missing = pd.Series([0] * len(label_missing), index=label_missing)
-    labels_count_insufficient_sample = labels_count_insufficient_sample.append(label_missing)
-    #print(f"For these label(s) {labels_count_insufficient_sample}, < 3 gold texts were sampled. Filling them up to 3 samples.")
-    for index_label, value in labels_count_insufficient_sample.iteritems():
-      df_sample_fill = df_train[df_train.label_text == index_label].sample(n=n_min_per_class-int(value), random_state=random_seed)
-      df_sample_random = pd.concat([df_sample_random, df_sample_fill])
-  print("Number of training examples after sampling: ", len(df_sample_random), " . (but before cross-validation split) ")
-  print(f"The number should be: n_sample_per_class ({n_sample_per_class}) * n_classes ({len(df_train.label_text.unique())}) = {n_sample_per_class*len(df_train.label_text.unique())} (plus at most a few examples to fill up low n classes)")
-
-  return df_sample_random.copy(deep=True)
-"""
+        return ElectraForPreTrainingOutput(
+            loss=loss,
+            logits=logits,
+            hidden_states=discriminator_hidden_states.hidden_states,
+            attentions=discriminator_hidden_states.attentions,
+        )
