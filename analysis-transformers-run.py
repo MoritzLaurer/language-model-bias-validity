@@ -99,7 +99,7 @@ else:
     args = parser.parse_args(["--task", "pimpo-simple",  # pimpo, uk-leftright-simple, uk-leftright
                             "--dataset", "pimpo",  # uk-leftright-econ, pimpo
                             "--vectorizer", "transformer",
-                            "--model", "google/electra-small-discriminator",  #"MoritzLaurer/DeBERTa-v3-xsmall-mnli-fever-anli-ling-binary",  #"google/flan-t5-small",
+                            "--model", "google/flan-t5-small",  #"google/electra-small-discriminator",  #"MoritzLaurer/DeBERTa-v3-xsmall-mnli-fever-anli-ling-binary",  #"google/flan-t5-small",
                             "--method", "generation",  #"nli_short",  #"generation",
                             "--sample_size", "100", "--sample_size_no_topic", "5000",
                             "--study_date", "20230601",
@@ -177,6 +177,8 @@ elif "pimpo" in DATASET:
     # df = pd.read_csv(f"/Users/moritzlaurer/Dropbox/PhD/Papers/multilingual/multilingual-repo/data-clean/df_pimpo_samp_trans_m2m_100_1.2B_embed_tfidf.zip", engine='python')
     df = pd.read_csv("./data-clean/df_pimpo_samp_trans_lemmatized_stopwords.zip", engine="python")
     df_cl = df.copy(deep=True)
+    # TODO: be sure that this does not cause downstream issues. Had two different columns for labels/label for some reason
+    df_cl = df_cl.rename(columns={"label": "labels"})
 else:
     raise Exception(f"Dataset name not found: {DATASET}")
 
@@ -203,11 +205,11 @@ if "uk-leftright" in DATASET:
     #task_label_text_map = {0: "neutral", 1: "right", 2: "very_right", -1: "left", -2: "very_left"}
     df_cl["label_text"] = df_cl.label_scale.map(task_label_text_map)
     print(df_cl["label_text"].value_counts())
-    ## adapt numeric label
+    ## adapt numeric labels
     task_label_text_map_factorized = {"neutral": 1, "right": 2, "right": 2, "left": 0, "left": 0}
     #task_label_text_map_factorized = {"neutral": 2, "right": 3, "very_right": 4, "left": 1, "very_left": 0}
-    df_cl["label"] = df_cl["label_text"].map(task_label_text_map_factorized)
-    print(df_cl["label"].value_counts())
+    df_cl["labels"] = df_cl["label_text"].map(task_label_text_map_factorized)
+    print(df_cl["labels"].value_counts())
 
 if "pimpo-simple" in TASK:
     task_label_text_map = {
@@ -217,7 +219,7 @@ if "pimpo-simple" in TASK:
         'no_topic': "no_topic"
     }
     df_cl["label_text"] = df_cl.label_text.map(task_label_text_map)
-    df_cl["label"] = df_cl.label_text.factorize(sort=True)[0]
+    df_cl["labels"] = df_cl.label_text.factorize(sort=True)[0]
 
 df_cl.label_text.unique()
 
@@ -248,8 +250,8 @@ else:
 
 ## data checks
 #print("Dataset: ", DATASET, "\n")
-# verify that numeric label is in alphabetical order of label_text (can avoid issues for NLI)
-labels_num_via_numeric = df_cl[~df_cl.label_text.duplicated(keep="first")].sort_values("label_text").label.tolist()  # label num via labels: get labels from data when ordering label text alphabetically
+# verify that numeric labels is in alphabetical order of label_text (can avoid issues for NLI)
+labels_num_via_numeric = df_cl[~df_cl.label_text.duplicated(keep="first")].sort_values("label_text").labels.tolist()  # labels num via labels: get labels from data when ordering label text alphabetically
 labels_num_via_text = pd.factorize(np.sort(df_cl.label_text.unique()))[0]  # label num via label_text: create label numeric via label text
 assert all(labels_num_via_numeric == labels_num_via_text)
 
@@ -453,14 +455,15 @@ Answer: """
 ## parameters relevant for generation models
 if METHOD == "generation":
     model_params = {
-        #"torch_dtype": torch.float16,  #torch.bfloat16, torch.float16
+        #"torch_dtype": torch.float32,  #torch.bfloat16, torch.float16
         #load_in_8bit=True,
         "device_map": "auto",
         "offload_folder": "offload",
         "offload_state_dict": True
     }
+    from transformers import GenerationConfig
     config_params = {
-        "max_new_tokens": 5,
+        "max_new_tokens": 7,
         "num_beams": 3,
         #"generation_num_beams": 5,  # https://github.com/huggingface/transformers/blob/68287689f2f0d8b7063c400230b3766987abf18d/src/transformers/training_args_seq2seq.py#L42
         "num_return_sequences": 1,
@@ -468,13 +471,13 @@ if METHOD == "generation":
         "top_k": 50,  # default: 50
         "return_dict_in_generate": True,
         "output_scores": True,
-        #"predict_with_generate": False,
         #"include_inputs_for_metrics": True
         "renormalize_logits": "True",
     }
+    generation_config = GenerationConfig.from_pretrained(MODEL_NAME, **config_params)
 else:
     model_params = None
-    config_params = None
+    generation_config = None
 
 ## automatically calculate roughly adequate epochs for number of data points
 if METHOD == "standard_dl":
@@ -504,10 +507,10 @@ elif "disc" in METHOD:
                     "logging_steps": 1, "evaluation_strategy": "epoch", "save_strategy": "epoch"}  # "do_eval": False
 elif "generation" in METHOD:
     HYPER_PARAMS = {
-        'lr_scheduler_type': 'linear', 'learning_rate': 5e-4, 'num_train_epochs': 5, 'seed': SEED_RUN, 'per_device_train_batch_size': 16, 'warmup_ratio': 0.20, 'weight_decay': 0.01, 'per_device_eval_batch_size': 64-32,
+        'lr_scheduler_type': 'linear', 'learning_rate': 5e-4, 'num_train_epochs': 10, 'seed': SEED_RUN, 'per_device_train_batch_size': 16-8, 'warmup_ratio': 0.20, 'weight_decay': 0.01, 'per_device_eval_batch_size': 64-32,
         # ! need to set this to true, otherwise seq2seq-trainer is not used https://github.com/huggingface/transformers/blob/v4.28.1/src/transformers/trainer_seq2seq.py#L246
-        "predict_with_generate": True, "gradient_checkpointing": False, #"gradient_accumulation_steps": 8,
-        "evaluation_strategy": "no", "save_strategy": "no"
+        "predict_with_generate": True, "gradient_checkpointing": True, "gradient_accumulation_steps": 4,
+        "evaluation_strategy": "epoch", "save_strategy": "epoch"
     }
 else:
     raise Exception("Method not implemented for hps")
@@ -554,15 +557,23 @@ else:
     method_short = METHOD
 
 
+
+#### load model and tokenizer
+# FP16 if cuda and if not mDeBERTa
+fp16_bool = True if torch.cuda.is_available() else False
+if "mDeBERTa".lower() in MODEL_NAME.lower(): fp16_bool = False  # mDeBERTa does not support FP16 yet
+fp16_bool = False
+# TODO: check if model_params needs to specify float format like fp16 if its used in trainer. but trainer probably then does conversion automatically
+
 model, tokenizer = load_model_tokenizer(model_name=MODEL_NAME, method=method_short,  #METHOD if "nli" not in METHOD else "nli",
                                         label_text_alphabetical=label_text_alphabetical, model_max_length=MODEL_MAX_LENGTH,
-                                        model_params=model_params, config_params=config_params)
+                                        model_params=model_params)
 
 
 #### tokenize
 
 dataset = tokenize_datasets(df_train_samp=df_train_format, df_test=df_test_format, tokenizer=tokenizer, method=method_short,  #METHOD if "nli" not in METHOD else "nli",
-                            max_length=MODEL_MAX_LENGTH, config_params=config_params)
+                            max_length=MODEL_MAX_LENGTH, generation_config=generation_config)
 
 
 ### create trainer
@@ -573,13 +584,9 @@ dataset = tokenize_datasets(df_train_samp=df_train_format, df_test=df_test_forma
 
 
 ## create trainer
-# FP16 if cuda and if not mDeBERTa
-fp16_bool = True if torch.cuda.is_available() else False
-if "mDeBERTa".lower() in MODEL_NAME.lower(): fp16_bool = False  # mDeBERTa does not support FP16 yet
-# TODO: can fp16 cause issues with generation models?
-fp16 = False
 
 train_args = set_train_args(hyperparams_dic=HYPER_PARAMS, training_directory=TRAINING_DIRECTORY, method=method_short,   #METHOD if "nli" not in METHOD else "nli",
+                            generation_config=generation_config,
                             disable_tqdm=False, fp16=fp16_bool)
 
 trainer = create_trainer(model=model, tokenizer=tokenizer, encoded_dataset=dataset, train_args=train_args,

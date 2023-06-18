@@ -39,7 +39,7 @@ sample_size_no_topic=50000
 sample_size_corpus=5000
 n_random_runs_total=2
 #n_tokens_remove_lst=(0 5 10)
-max_length=512
+max_length=448  #512
 active_learning_iterations=0
 
 total_iteration_required=$(($n_random_runs_total * ${#group_lst[@]}))

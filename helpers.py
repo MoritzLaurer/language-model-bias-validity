@@ -12,7 +12,10 @@ import ast
 import tqdm
 import random
 
-#np.random.seed(42)
+from polyfuzz import PolyFuzz
+from polyfuzz.models import SentenceEmbeddings
+from sentence_transformers import SentenceTransformer
+
 
 
 
@@ -27,20 +30,20 @@ def format_nli_trainset(df_train=None, hypo_label_dic=None, random_seed=42):
     ## entailment
     df_train_step = df_train[df_train.label_text == label_text].copy(deep=True)
     df_train_step["hypothesis"] = [hypothesis] * len(df_train_step)
-    df_train_step["label"] = [0] * len(df_train_step)
+    df_train_step["labels"] = [0] * len(df_train_step)
     ## not_entailment
     df_train_step_not_entail = df_train[df_train.label_text != label_text].copy(deep=True)
     # could try weighing the sample texts for not_entail here. e.g. to get same n texts for each label
     df_train_step_not_entail = df_train_step_not_entail.sample(n=min(len(df_train_step), len(df_train_step_not_entail)), random_state=random_seed)  # can try sampling more not_entail here
     df_train_step_not_entail["hypothesis"] = [hypothesis] * len(df_train_step_not_entail)
-    df_train_step_not_entail["label"] = [1] * len(df_train_step_not_entail)
+    df_train_step_not_entail["labels"] = [1] * len(df_train_step_not_entail)
     # append
     df_train_lst.append(pd.concat([df_train_step, df_train_step_not_entail]))
   df_train = pd.concat(df_train_lst)
   
   # shuffle
   df_train = df_train.sample(frac=1, random_state=random_seed)
-  df_train["label"] = df_train.label.apply(int)
+  df_train["labels"] = df_train.labels.apply(int)
   print(f"For NLI:  not_entail training examples were added, which leads to an augmented training dataset of length {len(df_train)}.")
 
   return df_train.copy(deep=True)
@@ -53,20 +56,20 @@ def format_nli_testset(df_test=None, hypo_label_dic=None):
   hypothesis_lst = [value for key, value in hypo_label_dic.items()]
   print("Number of hypotheses/classes: ", len(hypothesis_lst), "\n")
 
-  # label lists with 0 at alphabetical position of their true hypo, 1 for other hypos
+  # labels lists with 0 at alphabetical position of their true hypo, 1 for other hypos
   label_text_label_dic_explode = {}
   for key, value in hypo_label_dic.items():
     label_lst = [0 if value == hypo else 1 for hypo in hypothesis_lst]
     label_text_label_dic_explode[key] = label_lst
 
   df_test_copy = df_test.copy(deep=True)  # did this change the global df?
-  df_test_copy["label"] = df_test_copy.label_text.map(label_text_label_dic_explode)
+  df_test_copy["labels"] = df_test_copy.label_text.map(label_text_label_dic_explode)
   df_test_copy["hypothesis"] = [hypothesis_lst] * len(df_test_copy)
   print(f"For normal test, N classifications necessary: {len(df_test_copy)}")
   
-  # explode dataset to have K-1 additional rows with not_entail label and K-1 other hypotheses
-  # ! after exploding, cannot sample anymore, because distorts the order to true label values, which needs to be preserved for evaluation multilingual-repo
-  df_test_copy = df_test_copy.explode(["hypothesis", "label"])  # multi-column explode requires pd.__version__ >= '1.3.0'
+  # explode dataset to have K-1 additional rows with not_entail labels and K-1 other hypotheses
+  # ! after exploding, cannot sample anymore, because distorts the order to true labels values, which needs to be preserved for evaluation multilingual-repo
+  df_test_copy = df_test_copy.explode(["hypothesis", "labels"])  # multi-column explode requires pd.__version__ >= '1.3.0'
   print(f"For NLI test, N classifications necessary: {len(df_test_copy)}\n")
 
   return df_test_copy #df_test.copy(deep=True)
@@ -103,7 +106,7 @@ def data_preparation(random_seed=42, hypothesis_template=None, hypo_label_dic=No
 
 
 def load_model_tokenizer(model_name=None, method=None, label_text_alphabetical=None, model_max_length=512,
-                         model_params=None, config_params=None):
+                         model_params=None):
     if "nli" in method:
         tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True, model_max_length=model_max_length);
         model = AutoModelForSequenceClassification.from_pretrained(model_name); 
@@ -121,8 +124,9 @@ def load_model_tokenizer(model_name=None, method=None, label_text_alphabetical=N
     elif method == "generation":
         tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True, model_max_length=model_max_length);
         model = AutoModelForSeq2SeqLM.from_pretrained(model_name, **model_params);
-        generation_config = GenerationConfig.from_pretrained(model_name, **config_params)
-        model.generation_config = generation_config
+        # overwriting generation config in model is depricated. should be done when calling .generate() or when instantiating Seq2SeqTrainingArguments
+        #generation_config = GenerationConfig.from_pretrained(model_name, **config_params)
+        #model.generation_config = generation_config
     elif method == "disc":
         from transformers import ElectraConfig
         tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True, model_max_length=model_max_length);
@@ -143,7 +147,7 @@ def load_model_tokenizer(model_name=None, method=None, label_text_alphabetical=N
 
 
 ### create HF datasets and tokenize data
-def tokenize_datasets(df_train_samp=None, df_test=None, tokenizer=None, method=None, max_length=None, config_params=None):
+def tokenize_datasets(df_train_samp=None, df_test=None, tokenizer=None, method=None, max_length=None, generation_config=None):
     # train, val, test all in one datasetdict:
     dataset = datasets.DatasetDict({"train": datasets.Dataset.from_pandas(df_train_samp),
                                     "test": datasets.Dataset.from_pandas(df_test)})
@@ -165,7 +169,7 @@ def tokenize_datasets(df_train_samp=None, df_test=None, tokenizer=None, method=N
             #examples["text_prepared"], max_length=max_length - config_params["max_new_tokens"], truncation=True, return_tensors="pt", padding=True
         )
         labels = tokenizer(
-            examples["label_text"], max_length=config_params["max_new_tokens"], truncation=True, return_tensors="pt", padding=True  #"longest" #True
+            examples["label_text"], max_length=generation_config.max_new_tokens, truncation=True, return_tensors="pt", padding=True  #"longest" #True
         )
         model_inputs["labels"] = labels["input_ids"]
         return model_inputs
@@ -264,7 +268,7 @@ def compute_metrics_nli_binary(eval_pred, label_text_alphabetical=None):
     #print("Label chunks per permise: ", label_chunks_lst)
 
     print("Highest probability prediction per premise: ", hypo_position_highest_prob[:20])
-    print("Correct label per premise: ", label_position_gold[:20])
+    print("Correct labels per premise: ", label_position_gold[:20])
 
     #print(hypo_position_highest_prob)
     #print(label_position_gold)
@@ -285,7 +289,7 @@ def compute_metrics_nli_binary(eval_pred, label_text_alphabetical=None):
                'label_gold_raw': label_position_gold,
                'label_predicted_raw': hypo_position_highest_prob
                }
-    print("Aggregate metrics: ", {key: metrics[key] for key in metrics if key not in ["label_gold_raw", "label_predicted_raw"]} )  # print metrics but without label lists
+    print("Aggregate metrics: ", {key: metrics[key] for key in metrics if key not in ["label_gold_raw", "label_predicted_raw"]} )  # print metrics but without labels lists
     print("Detailed metrics: ", classification_report(label_position_gold, hypo_position_highest_prob, labels=np.sort(pd.factorize(label_text_alphabetical, sort=True)[0]), target_names=label_text_alphabetical, sample_weight=None, digits=2, output_dict=True,
                                 zero_division='warn'), "\n")
     return metrics
@@ -310,7 +314,7 @@ def compute_metrics_classical_ml(label_pred, label_gold, label_text_alphabetical
             'eval_label_gold_raw': label_gold,
             'eval_label_predicted_raw': label_pred
             }
-    print("Aggregate metrics: ", {key: metrics[key] for key in metrics if key not in ["eval_label_gold_raw", "eval_label_predicted_raw"]} )  # print metrics but without label lists
+    print("Aggregate metrics: ", {key: metrics[key] for key in metrics if key not in ["eval_label_gold_raw", "eval_label_predicted_raw"]} )  # print metrics but without labels lists
     print("Detailed metrics: ", classification_report(label_gold, label_pred, labels=np.sort(pd.factorize(label_text_alphabetical, sort=True)[0]), target_names=label_text_alphabetical, sample_weight=None, digits=2, output_dict=True,
                                 zero_division='warn'), "\n")
     return metrics
@@ -352,7 +356,8 @@ def compute_metrics_generation(dataset=None, model=None, tokenizer=None, hyperpa
     # batched inference
     #reconstructed_scores = []
     labels_pred = []
-    for batch in tqdm.tqdm(dataloader, desc="Inference"):
+    #for batch in tqdm.tqdm(dataloader, desc="Inference"):
+    for batch in dataloader:
         inputs_batched = {k: v.to(model.device) for k, v in batch.items()}
         outputs = model.generate(
             **inputs_batched,
@@ -378,18 +383,44 @@ def compute_metrics_generation(dataset=None, model=None, tokenizer=None, hyperpa
         reconstructed_scores.append(reconstructed_scores_batch.tolist())
         """
 
-        # get predicted label strings
+        # get predicted labels strings
         labels_pred_batch = tokenizer.batch_decode(outputs.sequences, skip_special_tokens=True)
         labels_pred.append(labels_pred_batch)
 
     #reconstructed_scores = [item for sublist in reconstructed_scores for item in sublist]
     labels_pred = [item for sublist in labels_pred for item in sublist]
+    print("Sample of predicted labels before harmonization: ", labels_pred[:20])
 
-    # ! careful, this will cause issues if output is not single tokens/letters
-    def remove_non_alphabetical(text):
-        return ''.join(char for char in text if char.isalpha())
-    labels_pred = [remove_non_alphabetical(string).strip().upper()[:1] for string in labels_pred]
+    ## improved harmonisation of predicted labels with gold labels for classification
+    # could get slow with large test-sets?
+    embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
+    distance_model = SentenceEmbeddings(embedding_model, min_similarity=0.0)
+    polyfuzz_model = PolyFuzz(distance_model)
+    def find_most_similar_label(label_pred, labels_gold_lst):
+        match = polyfuzz_model.match(label_pred, labels_gold_lst).get_matches().sort_values("Similarity", ascending=False).To.iloc[0]
+        print(f"Noisy output: '{label_pred}' was converted to '{match}'")
+        if match:
+            return match
+        else:
+            return random.choice(labels_gold_set)
 
+    labels_gold_set = list(set(labels_gold))
+    labels_pred = [pred if pred in labels_gold_set else find_most_similar_label([pred], labels_gold_set) for pred in labels_pred]
+
+    """labels_gold = ['neutral', 'neutral', 'sceptical', "supportive", 'other', "supportive", "sceptical", "other"]
+    labels_gold_set = list(set(labels_gold))
+    labels_pred = ['neutral',  'other', 'neutral', 'sceptical', "supportive", "is support", "sceptic", "different"]
+    [pred if pred in labels_gold_set else random.choice(labels_gold_set) for pred in labels_pred]
+    [pred if pred in labels_gold_set else find_most_similar_label([pred], labels_gold_set) for pred in labels_pred]"""
+
+    """embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
+    distance_model = SentenceEmbeddings(embedding_model, min_similarity=0.1)
+    polyfuzz_model = PolyFuzz(distance_model)
+    match = polyfuzz_model.match(["supportive is the quote"], labels_gold_set).get_matches().sort_values("Similarity", ascending=False).To.iloc[0]
+    print(match)"""
+
+    print("Sample of predicted labels: ", labels_pred[:20])
+    print("Sample of true labels: ", labels_gold[:20])
 
     ## calculate metrics
     #warnings.filterwarnings('ignore')
@@ -412,7 +443,7 @@ def compute_metrics_generation(dataset=None, model=None, tokenizer=None, hyperpa
             'eval_label_gold_raw': labels_gold,
             'eval_label_predicted_raw': labels_pred
             }
-    print("Aggregate metrics: ", {key: metrics[key] for key in metrics if key not in ["eval_label_gold_raw", "eval_label_predicted_raw"]} )  # print metrics but without label lists
+    print("Aggregate metrics: ", {key: metrics[key] for key in metrics if key not in ["eval_label_gold_raw", "eval_label_predicted_raw"]} )  # print metrics but without labels lists
     print("Detailed metrics: ", classification_report(labels_gold, labels_pred, sample_weight=None, digits=2, output_dict=True,  #labels=np.sort(pd.factorize(label_text_alphabetical, sort=True)[0]), target_names=label_text_alphabetical,
                                 zero_division='warn'), "\n")
 
@@ -443,7 +474,7 @@ def compute_metrics_electra(eval_pred, label_text_alphabetical=None):
         #hypo_position_highest_prob.append(np.argmax(np.array(chunk)[:, 0]))  # only accesses the first column of the array, i.e. the entailment/true prediction logit of all hypos and takes the highest one
         #hypo_position_highest_prob.append(np.argmin(np.array(chunk)))
         # to handle situation where duplicates among smallest values. issue: np.argmin would always just return the first value among duplicates, which defaults to a specific class
-        # this code first selects the smallest values and then randomly selects an index/label in case there are duplicates
+        # this code first selects the smallest values and then randomly selects an index/labels in case there are duplicates
         def indices_of_smallest_values(arr):
             smallest_value = np.min(arr)
             smallest_value_indices = np.where(arr == smallest_value)[0]
@@ -461,7 +492,7 @@ def compute_metrics_electra(eval_pred, label_text_alphabetical=None):
         label_position_gold.append(np.argmin(chunk))  # argmin to detect the position of the 0 among the 1s
 
     print("Highest probability prediction per premise: ", hypo_position_highest_prob[:20])
-    print("Correct label per premise: ", label_position_gold[:20])
+    print("Correct labels per premise: ", label_position_gold[:20])
 
     ### calculate standard metrics
     precision_macro, recall_macro, f1_macro, _ = precision_recall_fscore_support(label_position_gold, hypo_position_highest_prob, average='macro')  # https://scikit-learn.org/stable/modules/generated/sklearn.metrics.precision_recall_fscore_support.html
@@ -479,7 +510,7 @@ def compute_metrics_electra(eval_pred, label_text_alphabetical=None):
                'eval_label_gold_raw': label_position_gold,
                'eval_label_predicted_raw': hypo_position_highest_prob
                }
-    print("Aggregate metrics: ", {key: metrics[key] for key in metrics if key not in ["eval_label_gold_raw", "eval_label_predicted_raw"]} )  # print metrics but without label lists
+    print("Aggregate metrics: ", {key: metrics[key] for key in metrics if key not in ["eval_label_gold_raw", "eval_label_predicted_raw"]} )  # print metrics but without labels lists
     print("Detailed metrics: ", classification_report(label_position_gold, hypo_position_highest_prob, labels=np.sort(pd.factorize(label_text_alphabetical, sort=True)[0]), target_names=label_text_alphabetical, sample_weight=None, digits=2, output_dict=True,
                                 zero_division='warn'), "\n")
 
@@ -489,17 +520,18 @@ def compute_metrics_electra(eval_pred, label_text_alphabetical=None):
 
 ### Define trainer and hyperparameters
 
-def set_train_args(hyperparams_dic=None, training_directory=None, disable_tqdm=False, method=None, **kwargs):
+def set_train_args(hyperparams_dic=None, training_directory=None, disable_tqdm=False, method=None, generation_config=None, **kwargs):
     # https://huggingface.co/transformers/main_classes/trainer.html#transformers.TrainingArguments
 
     if method == "generation":
         train_args = Seq2SeqTrainingArguments(
             output_dir=f"./{training_directory}",  # f'./{training_directory}',  #f'./results/{training_directory}',
             logging_dir=f"./{training_directory}",  # f'./{training_directory}',  #f'./logs/{training_directory}',
+            generation_config=generation_config,
             **hyperparams_dic,
             **kwargs,
             #save_strategy="no",  # options: "no"/"steps"/"epoch"
-            save_total_limit=10,  # If a value is passed, will limit the total amount of checkpoints. Deletes the older checkpoints in output_dir
+            save_total_limit=1,  # If a value is passed, will limit the total amount of checkpoints. Deletes the older checkpoints in output_dir
             logging_strategy="epoch",
             report_to="all",  # "all"
             disable_tqdm=disable_tqdm,
@@ -511,7 +543,7 @@ def set_train_args(hyperparams_dic=None, training_directory=None, disable_tqdm=F
             **hyperparams_dic,
             **kwargs,
             #save_strategy="no",  # options: "no"/"steps"/"epoch"
-            save_total_limit=10,             # If a value is passed, will limit the total amount of checkpoints. Deletes the older checkpoints in output_dir
+            save_total_limit=1,             # If a value is passed, will limit the total amount of checkpoints. Deletes the older checkpoints in output_dir
             logging_strategy="epoch",
             report_to="all",  # "all"
             disable_tqdm=disable_tqdm,
