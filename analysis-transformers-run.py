@@ -78,6 +78,8 @@ parser.add_argument('-n_tok_rm', '--n_tokens_remove', type=int, #nargs='+',
                     help='number of group-specific tokens to remove from test data')
 parser.add_argument('-save', '--save_outputs', action="store_true",
                     help='boolean whether to save outputs to disk')
+parser.add_argument('-g_col', '--group_column', type=str,
+                    help='group column to filter training df by')
 
 parser.add_argument('-max_l', '--max_length', type=int, #nargs='+',
                     help='max n tokens')
@@ -99,13 +101,14 @@ else:
     args = parser.parse_args(["--task", "pimpo-simple",  # pimpo, uk-leftright-simple, uk-leftright
                             "--dataset", "pimpo",  # uk-leftright-econ, pimpo
                             "--vectorizer", "transformer",
-                            "--model", "google/flan-t5-small",  #"google/electra-small-discriminator",  #"MoritzLaurer/DeBERTa-v3-xsmall-mnli-fever-anli-ling-binary",  #"google/flan-t5-small",
-                            "--method", "generation",  #"nli_short",  #"generation",
+                            "--model", "MoritzLaurer/DeBERTa-v3-xsmall-mnli-fever-anli-ling-binary",  #"google/flan-t5-small",  #"google/electra-small-discriminator",  #"MoritzLaurer/DeBERTa-v3-xsmall-mnli-fever-anli-ling-binary",  #"google/flan-t5-small",
+                            "--method", "nli_short",  #"nli_short",  #"generation",
                             "--sample_size", "100", "--sample_size_no_topic", "5000",
                             "--study_date", "20230601",
                             "--n_run", "1", "--n_random_runs_total", "3",
                             "--group", "randomall", "--n_tokens_remove", "0", "--max_length", "256",
                             "--active_learning_iterations", "0", "--sample_size_corpus", "500",
+                            "--group_column", "decade",  # "country_iso", "parfam_text", "parfam_text_aggreg", "decade"
                             #"--save_outputs"
                             ])
 
@@ -122,6 +125,7 @@ VECTORIZER = args.vectorizer
 GROUP = args.group
 N_TOKENS_REMOVE = args.n_tokens_remove
 SAVE_OUTPUTS = args.save_outputs
+GROUP_COL = args.group_column
 
 MODEL_MAX_LENGTH = args.max_length
 AL_ITERATIONS = args.active_learning_iterations
@@ -147,7 +151,7 @@ SAMPLE_SIZE_CORPUS = args.sample_size_corpus
 
 # randomly assign different seeds for each run
 seed_runs_all = np.random.choice(range(1000), size=N_RANDOM_RUNS_TOTAL)
-SEED_RUN = seed_runs_all[N_RUN]
+SEED_RUN = int(seed_runs_all[N_RUN])
 print("Iteration number: ", N_RUN)
 print("All random seeds: ", seed_runs_all)
 print("Random seed for this run: ", SEED_RUN)
@@ -179,6 +183,8 @@ elif "pimpo" in DATASET:
     df_cl = df.copy(deep=True)
     # TODO: be sure that this does not cause downstream issues. Had two different columns for labels/label for some reason
     df_cl = df_cl.rename(columns={"label": "labels"})
+    # add decade column
+    df_cl["decade"] = df_cl["date"].apply(lambda x: int(str(x)[:3] + "0"))
 else:
     raise Exception(f"Dataset name not found: {DATASET}")
 
@@ -267,7 +273,7 @@ df_cl["parfam_text_aggreg"] = df_cl.parfam_text.map(parfam_aggreg_map)
 
 ### select training data
 
-df_cl.groupby("parfam_text").apply(lambda x: x.label_text.value_counts())
+"""df_cl.groupby("parfam_text").apply(lambda x: x.label_text.value_counts())
 # parfam with > 100 for each class. CHR, LEF, LIB, NAT, SOC. (less: (ECO) SIP, ETH, CON, AGR)
 if "pimpo" in DATASET:
     col_group_map = {}
@@ -275,58 +281,86 @@ if "pimpo" in DATASET:
     col_group_map.update(**{country: "country_iso" for country in df_cl.country_iso.unique()})
 else:
     raise NotImplementedError
-
+"""
 
 import random
 random.seed(SEED_RUN)
-if "random3" in GROUP:
-    # TODO: implement for more than countries and make more general
-    GROUP_join = random.sample(list(df_cl.country_iso.unique()), 3)
-    GROUP_join = '|'.join(GROUP_join)
-    print(GROUP_join)
-elif "random2" in GROUP:
-    group_enough_data = ["nld", "esp", "deu", "dnk", "aut"]
-    GROUP_join = random.sample(group_enough_data, 2)
-    GROUP_join = '|'.join(GROUP_join)
-    print(GROUP_join)
-# TODO: use this in bash script for single groups. leads to clearer file naming and less total runs for single group-member runs
-elif "random1" in GROUP:
-    GROUP_join = random.sample(list(df_cl.country_iso.unique()), 1)[0]
-    print(GROUP_join)
-elif "randomall" in GROUP:
-    pass
-else:
-    raise NotImplementedError
 
+def select_group_members_randomly(df=None, group_col=None, n_members_str=None, seed=None):
+    random.seed(int(seed))
+    n_members = int(n_members_str[-1])
+    group_join = random.sample(list(df[group_col].unique()), n_members)
+    print(f"Group selected: {group_join}  for seed {seed}")
+    group_join = r'\b' + r'\b|\b'.join(group_join) + r'\b'
+    #group_join = f"^({group_join})$"  # to only look at exact matches
+    return group_join, seed+1
 
-#print(df_cl.groupby("country_iso").apply(lambda x: x.label_text.value_counts()))
+label_distribution_per_group_member = df_cl.groupby(GROUP_COL).apply(lambda x: x.label_text.value_counts())
+print("Overall label distribution per group member:\n", label_distribution_per_group_member)
 
 # sample training data
 if "uk-leftright" in DATASET:
     df_train = df_cl.sample(n=MAX_SAMPLE, random_state=SEED_RUN)
 elif "pimpo" in DATASET:
-    # simplified
-    if "randomall" in GROUP:
-        df_cl_group = df_cl.copy(deep=True)
-    elif "random" in GROUP:
-        # TODO: if beyond countries, double check if group_join regex really only matches single group-member per group-member string. works for countries, maybe not for other groups if one member is sub-string of other member
-        df_cl_group = df_cl[df_cl.country_iso.str.contains(GROUP_join)].copy(deep=True)
-    else:
-        raise NotImplementedError
 
     # unrealistic balanced sample without AL
     if AL_ITERATIONS == 0:
-        # sample x% of training data for no topic, then share the remainder equally across classes
-        n_sample_notopic = int(MAX_SAMPLE * TRAIN_NOTOPIC_PROPORTION_TRAIN)
-        n_sample_perclass = int((MAX_SAMPLE - n_sample_notopic) / (len(df_cl.label_text.unique()) - 1))
-        df_train_samp1 = df_cl_group.groupby("label_text", as_index=False, group_keys=False).apply(
-            lambda x: x.sample(min(n_sample_perclass, len(x)), random_state=SEED_RUN) if x.label_text.unique()[0] != "no_topic" else None)
-        df_train_samp2 = df_cl_group[df_cl_group.label_text == "no_topic"].sample(n_sample_notopic, random_state=SEED_RUN)
-        df_train = pd.concat([df_train_samp1, df_train_samp2])
+        # redo sampling for different groups until get a fully balanced sample (or 20 iter)
+        # balanced samples are important to remove data imbalanced as intervening variable for performance differences
+        imbalanced_sample = True
+        counter = 0
+        seed_run_update = SEED_RUN
+        while imbalanced_sample and (counter <= 20):
+            # select data based on group. redo sampling with different random seed if necessary
+            if "randomall" in GROUP:
+                df_cl_group = df_cl.copy(deep=True)
+                print("GROUP is randomall, so just sampling from entire corpus without group selection")
+            elif "random" in GROUP:
+                # TODO: if beyond countries, double check if group_join regex really only matches single group-member per group-member string. works for countries, maybe not for other groups if one member is sub-string of other member
+                group_join, seed_run_update = select_group_members_randomly(df=df_cl, group_col=GROUP_COL, n_members_str=GROUP, seed=seed_run_update)
+                df_cl_group = df_cl[df_cl[GROUP_COL].str.contains(group_join)].copy(deep=True)
+            else:
+                raise NotImplementedError
 
-        print("df_train.label_text.value_counts:\n", df_train.label_text.value_counts())
+            # sample x% of training data for no topic, then share the remainder equally across classes
+            n_sample_notopic = int(MAX_SAMPLE * TRAIN_NOTOPIC_PROPORTION_TRAIN)
+            n_sample_perclass = int((MAX_SAMPLE - n_sample_notopic) / (len(df_cl.label_text.unique()) - 1))
+            df_train_samp1 = df_cl_group.groupby("label_text", as_index=False, group_keys=False).apply(
+                lambda x: x.sample(min(n_sample_perclass, len(x)), random_state=SEED_RUN) if x.label_text.unique()[0] != "no_topic" else None)
+            df_train_samp2 = df_cl_group[df_cl_group.label_text == "no_topic"].sample(n_sample_notopic, random_state=SEED_RUN)
+            df_train = pd.concat([df_train_samp1, df_train_samp2])
+            print("Test sample: df_train.label_text.value_counts:\n", df_train.label_text.value_counts())
+
+            # check if n_samples per class correspond to harmonized n_sample_perclass
+            df_train_label_distribution = df_train.label_text.value_counts()
+            train_label_distribution_not_standard = df_train_label_distribution[~(df_train_label_distribution == n_sample_perclass)]
+            all_labels_have_standard_n_samples = len(train_label_distribution_not_standard) == 0
+            # check if labels that do not have length of standard labels ("no_topic") have exactly the length of n_sample_notopic and are called "no_topic"
+            if not all_labels_have_standard_n_samples:
+                special_label_has_correct_length = (train_label_distribution_not_standard == n_sample_notopic).tolist()
+                special_label_has_correct_name = (train_label_distribution_not_standard.index == "no_topic").tolist()
+                special_label_correct = all(special_label_has_correct_length + special_label_has_correct_name)
+            else:
+                not_standard_label_correct = True
+            if (all_labels_have_standard_n_samples) or (not all_labels_have_standard_n_samples and special_label_correct):
+                imbalanced_sample = False
+            counter += 1
+
+        if counter == 21:
+            raise ValueError("could not sample balanced training data after 20 iterations")
+        print(f"\nFINAL DF_TRAIN SAMPLE (BALANCED) for group {group_join}:\ndf_train.label_text.value_counts:\n", df_train.label_text.value_counts())
+
 
     elif AL_ITERATIONS > 0:
+        raise NotImplementedError("active learning not implemented for updated automatic group sampling")
+        if "randomall" in GROUP:
+            df_cl_group = df_cl.copy(deep=True)
+        elif "random" in GROUP:
+            # TODO: if beyond countries, double check if group_join regex really only matches single group-member per group-member string. works for countries, maybe not for other groups if one member is sub-string of other member
+            df_cl_group = df_cl[df_cl[GROUP_COL].str.contains(group_join)].copy(deep=True)
+        else:
+            raise NotImplementedError
+
         if ("nli" in METHOD) or ("generation" in METHOD):
             df_corpus = df_cl_group.copy(deep=True)
             df_train_seed = None
@@ -342,6 +376,7 @@ elif "pimpo" in DATASET:
         print("df_corpus.label_text.value_counts:\n", df_corpus.label_text.value_counts())
 
 
+
 # create df test
 # TODO make work beyond countries
 if "randomall" in GROUP:
@@ -355,10 +390,10 @@ elif "random" in GROUP:
         df_test = df_cl[~df_cl.index.isin(df_corpus.index)]
         if METHOD == "standard_dl":
             df_test = df_test[~df_test.index.isin(df_train_seed.index)]
-        df_test = df_test[~df_test.country_iso.str.contains(GROUP_join)].copy(deep=True)
+        df_test = df_test[~df_test[GROUP_COL].str.contains(group_join)].copy(deep=True)
     else:
         df_test = df_cl[~df_cl.index.isin(df_train.index)]
-        df_test = df_test[~df_test.country_iso.str.contains(GROUP_join)].copy(deep=True)
+        df_test = df_test[~df_test[GROUP_COL].str.contains(group_join)].copy(deep=True)
 
 
 # remove N no_topic & downsample for faster testing
