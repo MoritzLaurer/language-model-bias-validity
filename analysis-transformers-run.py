@@ -258,7 +258,7 @@ if VECTORIZER == "tfidf":
 elif VECTORIZER == "transformer":
     if "nli" in METHOD:
         df_cl["text_prepared"] = df_cl["text_preceding_trans"].fillna('') + '  | The quote: "' + df_cl["text_original_trans"] + '" End of quote |  ' + df_cl["text_following_trans"].fillna('')
-    elif METHOD == "standard_dl":
+    elif "standard" in METHOD:
         df_cl["text_prepared"] = df_cl["text_preceding_trans"].fillna('') + ' \n ' + df_cl["text_original_trans"] + ' \n ' + df_cl["text_following_trans"].fillna('')
     elif METHOD == "generation":
         df_cl["text_prepared"] = df_cl["text_preceding_trans"].fillna('') + '  | The quote: "' + df_cl["text_original_trans"] + '" End of quote |  ' + df_cl["text_following_trans"].fillna('')
@@ -470,7 +470,7 @@ if ("nli" in METHOD) or ("disc" in METHOD):
 
 ## generation instructions
 # TODO: need to somehow make sure that these instructions never get cut, but only the input text
-if METHOD == "generation":
+if "generation" in METHOD:
     # TODO: properly implement variations for instructions.
     instruction_short = """\n
 Which of the following categories applies best to the quote considering the context?
@@ -492,7 +492,7 @@ Answer: """
 
 
 ## parameters relevant for generation models
-if METHOD == "generation":
+if "generation" in METHOD:
     model_params = {
         #"torch_dtype": torch.float32,  #torch.bfloat16, torch.float16
         #load_in_8bit=True,
@@ -578,8 +578,9 @@ elif "generation" in METHOD:
     df_train_format = df_train.copy(deep=True)
     df_test_format = df_test.copy(deep=True)
     # adapt input text
-    df_train_format["text_prepared"] = instruction_short + df_train_format["text_prepared"]
-    df_test_format["text_prepared"] = instruction_short + df_test_format["text_prepared"]
+    if METHOD == "generation":
+        df_train_format["text_prepared"] = instruction_short + df_train_format["text_prepared"]
+        df_test_format["text_prepared"] = instruction_short + df_test_format["text_prepared"]
     # adapt label
     df_train_format["label_text_original"] = df_train_format["label_text"]
     df_test_format["label_text_original"] = df_test_format["label_text"]
@@ -596,6 +597,8 @@ if "nli" in METHOD:
     method_short = "nli"
 elif "disc" in METHOD:
     method_short = "disc"
+elif "generation" in METHOD:
+    method_short = "generation"
 else:
     method_short = METHOD
 
