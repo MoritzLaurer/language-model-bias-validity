@@ -11,6 +11,7 @@ import numpy as np
 import ast
 import tqdm
 import random
+import time
 
 from polyfuzz import PolyFuzz
 from polyfuzz.models import SentenceEmbeddings
@@ -164,9 +165,7 @@ def tokenize_datasets(df_train_samp=None, df_test=None, tokenizer=None, method=N
     def tokenize_func_generation(examples):
         # two separate tokenization steps to deal with fact that labels are also input text / count towards max token limit
         model_inputs = tokenizer(
-            examples["text_prepared"], max_length=max_length, truncation=True, return_tensors="pt", padding=True  #"longest" #True
-            # unsure if two sequences of labels and text need to sum to max length or not
-            #examples["text_prepared"], max_length=max_length - config_params["max_new_tokens"], truncation=True, return_tensors="pt", padding=True
+            examples["text_prepared"], max_length=max_length - generation_config.max_new_tokens, truncation=True, return_tensors="pt", padding=True  #"longest" #True
         )
         labels = tokenizer(
             examples["label_text"], max_length=generation_config.max_new_tokens, truncation=True, return_tensors="pt", padding=True  #"longest" #True
@@ -320,9 +319,10 @@ def compute_metrics_classical_ml(label_pred, label_gold, label_text_alphabetical
     return metrics
 
 
-def compute_metrics_generation(dataset=None, model=None, tokenizer=None, hyperparams_dic=None, config_params=None):
+def compute_metrics_generation(dataset=None, model=None, tokenizer=None, hyperparams_dic=None, generation_config=None):
     # function copied and adapted from ActiveLLM, so contains some unnecessary code
     clean_memory()
+    start_time = time.time()  # Store current time
 
     # get true labels
     #labels_gold = dataset["label_text"].tolist()
@@ -361,7 +361,8 @@ def compute_metrics_generation(dataset=None, model=None, tokenizer=None, hyperpa
         inputs_batched = {k: v.to(model.device) for k, v in batch.items()}
         outputs = model.generate(
             **inputs_batched,
-            **{key: value for key, value in config_params.items() if key != "generation_num_beams"},
+            #**{key: value for key, value in config_params.items() if key != "generation_num_beams"},
+            generation_config=generation_config,
         )
 
         """# compute transition scores for sequences differently if no beam search
@@ -432,6 +433,8 @@ def compute_metrics_generation(dataset=None, model=None, tokenizer=None, hyperpa
     acc_balanced = balanced_accuracy_score(labels_gold, labels_pred)
     acc_not_balanced = accuracy_score(labels_gold, labels_pred)
 
+    end_time = time.time()  # Store current time after execution
+
     metrics = {'eval_f1_macro': f1_macro,
             'eval_f1_micro': f1_micro,
             'eval_accuracy_balanced': acc_balanced,
@@ -441,7 +444,8 @@ def compute_metrics_generation(dataset=None, model=None, tokenizer=None, hyperpa
             'eval_precision_micro': precision_micro,
             'eval_recall_micro': recall_micro,
             'eval_label_gold_raw': labels_gold,
-            'eval_label_predicted_raw': labels_pred
+            'eval_label_predicted_raw': labels_pred,
+            'eval_runtime': round(end_time - start_time, 3),
             }
     print("Aggregate metrics: ", {key: metrics[key] for key in metrics if key not in ["eval_label_gold_raw", "eval_label_predicted_raw"]} )  # print metrics but without labels lists
     print("Detailed metrics: ", classification_report(labels_gold, labels_pred, sample_weight=None, digits=2, output_dict=True,  #labels=np.sort(pd.factorize(label_text_alphabetical, sort=True)[0]), target_names=label_text_alphabetical,
@@ -502,7 +506,7 @@ def compute_metrics_electra(eval_pred, label_text_alphabetical=None):
     metrics = {'eval_f1_macro': f1_macro,
                'eval_f1_micro': f1_micro,
                'eval_accuracy_balanced': acc_balanced,
-               'eval_accuracy': acc_not_balanced,
+               'eval_accuracy_not_b': acc_not_balanced,
                'eval_precision_macro': precision_macro,
                'eval_recall_macro': recall_macro,
                'eval_precision_micro': precision_micro,

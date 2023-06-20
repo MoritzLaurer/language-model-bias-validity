@@ -15,6 +15,7 @@ import os
 import torch
 #from transformers import AutoTokenizer, AutoConfig, AutoModelForSequenceClassification
 #from transformers import TrainingArguments
+import time
 
 # Load helper functions
 import sys
@@ -28,7 +29,7 @@ from helpers import (
 )
 
 # load latest version of ActiveLLM
-if not EXECUTION_TERMINAL:
+"""if not EXECUTION_TERMINAL:
     sys.path.insert(0, "/Users/moritzlaurer/Dropbox/PhD/open-source/ActiveLLM")
 else:
     sys.path.insert(0, "/gpfs/home5/laurerm/meta-metrics-repo/ActiveLLM")
@@ -37,7 +38,7 @@ from active_learner import ActiveLearner
 import importlib
 import active_learner
 importlib.reload(active_learner)
-from active_learner import ActiveLearner
+from active_learner import ActiveLearner"""
 
 
 # Create the argparse to pass arguments via terminal
@@ -47,12 +48,14 @@ parser = argparse.ArgumentParser(description='Pass arguments via terminal')
 # main args
 parser.add_argument('-ds', '--dataset', type=str,
                     help='Name of dataset. Can be one of: "uk-leftright", "pimpo" ')
-parser.add_argument('-samp', '--sample_size', type=int, #nargs='+',
+parser.add_argument('-samp_train', '--sample_size_train', type=int, #nargs='+',
                     help='Sample size')
 parser.add_argument('-samp_corpus', '--sample_size_corpus', type=int, #nargs='+',
                     help='Sample size for corpus to to al on')
 parser.add_argument('-samp_no_topic', '--sample_size_no_topic', type=int, #nargs='+',
                     help='Sample size for no-topic class')
+parser.add_argument('-samp_test', '--sample_size_test', type=int, #nargs='+',
+                    help='Sample size for full test set')
 parser.add_argument('-m', '--method', type=str,
                     help='Method. One of "classical_ml"')
 parser.add_argument('-model', '--model', type=str,
@@ -72,10 +75,10 @@ parser.add_argument('-n_run', '--n_run', type=int, #nargs='+',
                     help='The number of the respective random iteration')
 parser.add_argument('-n_rand_runs', '--n_random_runs_total', type=int, #nargs='+',
                     help='The total number of random iterations')
-parser.add_argument('-g', '--group', type=str,
+parser.add_argument('-g_samp', '--group_sample', type=str,
                     help='group to filter training data by')
-parser.add_argument('-n_tok_rm', '--n_tokens_remove', type=int, #nargs='+',
-                    help='number of group-specific tokens to remove from test data')
+#parser.add_argument('-n_tok_rm', '--n_tokens_remove', type=int, #nargs='+',
+#                    help='number of group-specific tokens to remove from test data')
 parser.add_argument('-save', '--save_outputs', action="store_true",
                     help='boolean whether to save outputs to disk')
 parser.add_argument('-g_col', '--group_column', type=str,
@@ -101,14 +104,14 @@ else:
     args = parser.parse_args(["--task", "pimpo-simple",  # pimpo, uk-leftright-simple, uk-leftright
                             "--dataset", "pimpo",  # uk-leftright-econ, pimpo
                             "--vectorizer", "transformer",
-                            "--model", "MoritzLaurer/DeBERTa-v3-xsmall-mnli-fever-anli-ling-binary",  #"google/flan-t5-small",  #"google/electra-small-discriminator",  #"MoritzLaurer/DeBERTa-v3-xsmall-mnli-fever-anli-ling-binary",  #"google/flan-t5-small",
-                            "--method", "nli_short",  #"nli_short",  #"generation",
-                            "--sample_size", "100", "--sample_size_no_topic", "5000",
+                            "--model", "google/electra-small-discriminator",  #"google/flan-t5-small",  #"google/electra-small-discriminator",  #"MoritzLaurer/DeBERTa-v3-xsmall-mnli-fever-anli-ling-binary",  #"google/flan-t5-small",
+                            "--method", "standard_dl",  #"nli_short",  #"generation",
+                            "--sample_size_train", "50", "--sample_size_no_topic", "5000",
                             "--study_date", "20230601",
                             "--n_run", "1", "--n_random_runs_total", "3",
-                            "--group", "randomall", "--n_tokens_remove", "0", "--max_length", "256",
-                            "--active_learning_iterations", "0", "--sample_size_corpus", "500",
-                            "--group_column", "decade",  # "country_iso", "parfam_text", "parfam_text_aggreg", "decade"
+                            "--group_sample", "randomall", "--max_length", "256",  #"--n_tokens_remove", "0",
+                            "--active_learning_iterations", "0", "--sample_size_test", "500",  #"--sample_size_corpus", "500",
+                            "--group_column", "country_iso",  # "country_iso", "parfam_text", "parfam_text_aggreg", "decade"
                             #"--save_outputs"
                             ])
 
@@ -116,23 +119,23 @@ else:
 DATASET = args.dataset
 TRAINING_DIRECTORY = f"results/{DATASET}"
 
-MAX_SAMPLE = args.sample_size
+SAMPLE_SIZE_TRAIN = args.sample_size_train
 DATE = args.study_date
 TASK = args.task
 METHOD = args.method
 MODEL_NAME = args.model
 VECTORIZER = args.vectorizer
-GROUP = args.group
-N_TOKENS_REMOVE = args.n_tokens_remove
+#N_TOKENS_REMOVE = args.n_tokens_remove
 SAVE_OUTPUTS = args.save_outputs
+GROUP_SAMPLE = args.group_sample
 GROUP_COL = args.group_column
 
 MODEL_MAX_LENGTH = args.max_length
 AL_ITERATIONS = args.active_learning_iterations
 if AL_ITERATIONS > 0:
     print("AL_ITERATIONS: ", AL_ITERATIONS)
-    N_SAMPLES_PER_AL_ITER = int(MAX_SAMPLE/AL_ITERATIONS)
-    print(f"For sample size {MAX_SAMPLE}, this means {N_SAMPLES_PER_AL_ITER} samples per iteration.")
+    N_SAMPLES_PER_AL_ITER = int(SAMPLE_SIZE_TRAIN/AL_ITERATIONS)
+    print(f"For sample size {SAMPLE_SIZE_TRAIN}, this means {N_SAMPLES_PER_AL_ITER} samples per iteration.")
 else:
     print("No active learning.")
     N_SAMPLES_PER_AL_ITER = None
@@ -148,6 +151,7 @@ np.random.seed(SEED_GLOBAL)
 SAMPLE_NO_TOPIC = args.sample_size_no_topic  # for number in test set
 TRAIN_NOTOPIC_PROPORTION_TRAIN = 0.4
 SAMPLE_SIZE_CORPUS = args.sample_size_corpus
+SAMPLE_SIZE_TEST = args.sample_size_test
 
 # randomly assign different seeds for each run
 seed_runs_all = np.random.choice(range(1000), size=N_RANDOM_RUNS_TOTAL)
@@ -171,6 +175,16 @@ elif ("t5" in MODEL_NAME.lower()) and ("nli" in METHOD.lower() or "standard_dl" 
 elif ("electra" in MODEL_NAME.lower()) and ("generation" in METHOD.lower()):
     raise Exception(f"MODEL_NAME {MODEL_NAME} not implemented for METHOD {METHOD}")
 
+if "small" in MODEL_NAME.lower():
+    MODEL_SIZE = "small"
+elif "base" in MODEL_NAME.lower():
+    MODEL_SIZE = "base"
+elif "large" in MODEL_NAME.lower():
+    MODEL_SIZE = "large"
+elif "xl" in MODEL_NAME.lower():
+    MODEL_SIZE = "xl"
+else:
+    raise NotImplementedError(f"Model size for {MODEL_NAME} not implemented.")
 
 
 ##### load dataset
@@ -243,13 +257,13 @@ if VECTORIZER == "tfidf":
         df_cl["text_prepared"] = df_cl["text_preceding"].fillna('') + " " + df_cl["text_original"] + " " + df_cl["text_following"].fillna('')
 elif VECTORIZER == "transformer":
     if "nli" in METHOD:
-        df_cl["text_prepared"] = df_cl["text_preceding_trans"].fillna('') + '  | The quote: "' + df_cl["text_original_trans"] + '" End of the quote |  ' + df_cl["text_following_trans"].fillna('')
+        df_cl["text_prepared"] = df_cl["text_preceding_trans"].fillna('') + '  | The quote: "' + df_cl["text_original_trans"] + '" End of quote |  ' + df_cl["text_following_trans"].fillna('')
     elif METHOD == "standard_dl":
         df_cl["text_prepared"] = df_cl["text_preceding_trans"].fillna('') + ' \n ' + df_cl["text_original_trans"] + ' \n ' + df_cl["text_following_trans"].fillna('')
     elif METHOD == "generation":
-        df_cl["text_prepared"] = df_cl["text_preceding_trans"].fillna('') + '  | The quote: "' + df_cl["text_original_trans"] + '" End of the quote |  ' + df_cl["text_following_trans"].fillna('')
+        df_cl["text_prepared"] = df_cl["text_preceding_trans"].fillna('') + '  | The quote: "' + df_cl["text_original_trans"] + '" End of quote |  ' + df_cl["text_following_trans"].fillna('')
     elif "disc" in METHOD:
-        df_cl["text_prepared"] = df_cl["text_preceding_trans"].fillna('') + '  | The quote: "' + df_cl["text_original_trans"] + '" End of the quote |  ' + df_cl["text_following_trans"].fillna('')
+        df_cl["text_prepared"] = df_cl["text_preceding_trans"].fillna('') + '  | The quote: "' + df_cl["text_original_trans"] + '" End of quote |  ' + df_cl["text_following_trans"].fillna('')
 else:
     raise Exception(f"Vectorizer {VECTORIZER} or METHOD {METHOD} not implemented.")
 
@@ -300,7 +314,7 @@ print("Overall label distribution per group member:\n", label_distribution_per_g
 
 # sample training data
 if "uk-leftright" in DATASET:
-    df_train = df_cl.sample(n=MAX_SAMPLE, random_state=SEED_RUN)
+    df_train = df_cl.sample(n=SAMPLE_SIZE_TRAIN, random_state=SEED_RUN)
 elif "pimpo" in DATASET:
 
     # unrealistic balanced sample without AL
@@ -312,19 +326,20 @@ elif "pimpo" in DATASET:
         seed_run_update = SEED_RUN
         while imbalanced_sample and (counter <= 20):
             # select data based on group. redo sampling with different random seed if necessary
-            if "randomall" in GROUP:
+            if "randomall" in GROUP_SAMPLE:
                 df_cl_group = df_cl.copy(deep=True)
-                print("GROUP is randomall, so just sampling from entire corpus without group selection")
-            elif "random" in GROUP:
+                group_join = "randomall"
+                print("GROUP_SAMPLE is randomall, so just sampling from entire corpus without group selection")
+            elif "random" in GROUP_SAMPLE:
                 # TODO: if beyond countries, double check if group_join regex really only matches single group-member per group-member string. works for countries, maybe not for other groups if one member is sub-string of other member
-                group_join, seed_run_update = select_group_members_randomly(df=df_cl, group_col=GROUP_COL, n_members_str=GROUP, seed=seed_run_update)
+                group_join, seed_run_update = select_group_members_randomly(df=df_cl, group_col=GROUP_COL, n_members_str=GROUP_SAMPLE, seed=seed_run_update)
                 df_cl_group = df_cl[df_cl[GROUP_COL].str.contains(group_join)].copy(deep=True)
             else:
                 raise NotImplementedError
 
             # sample x% of training data for no topic, then share the remainder equally across classes
-            n_sample_notopic = int(MAX_SAMPLE * TRAIN_NOTOPIC_PROPORTION_TRAIN)
-            n_sample_perclass = int((MAX_SAMPLE - n_sample_notopic) / (len(df_cl.label_text.unique()) - 1))
+            n_sample_notopic = int(SAMPLE_SIZE_TRAIN * TRAIN_NOTOPIC_PROPORTION_TRAIN)
+            n_sample_perclass = int((SAMPLE_SIZE_TRAIN - n_sample_notopic) / (len(df_cl.label_text.unique()) - 1))
             df_train_samp1 = df_cl_group.groupby("label_text", as_index=False, group_keys=False).apply(
                 lambda x: x.sample(min(n_sample_perclass, len(x)), random_state=SEED_RUN) if x.label_text.unique()[0] != "no_topic" else None)
             df_train_samp2 = df_cl_group[df_cl_group.label_text == "no_topic"].sample(n_sample_notopic, random_state=SEED_RUN)
@@ -351,11 +366,11 @@ elif "pimpo" in DATASET:
         print(f"\nFINAL DF_TRAIN SAMPLE (BALANCED) for group {group_join}:\ndf_train.label_text.value_counts:\n", df_train.label_text.value_counts())
 
 
-    elif AL_ITERATIONS > 0:
+    """elif AL_ITERATIONS > 0:
         raise NotImplementedError("active learning not implemented for updated automatic group sampling")
-        if "randomall" in GROUP:
+        if "randomall" in GROUP_SAMPLE:
             df_cl_group = df_cl.copy(deep=True)
-        elif "random" in GROUP:
+        elif "random" in GROUP_SAMPLE:
             # TODO: if beyond countries, double check if group_join regex really only matches single group-member per group-member string. works for countries, maybe not for other groups if one member is sub-string of other member
             df_cl_group = df_cl[df_cl[GROUP_COL].str.contains(group_join)].copy(deep=True)
         else:
@@ -368,37 +383,37 @@ elif "pimpo" in DATASET:
             # need to implement sampling random df_train_seed as well as corpus without overlap
             #raise NotImplementedError()
             df_corpus = df_cl_group.copy(deep=True)
-            df_train_seed = df_corpus.sample(n=int(MAX_SAMPLE/AL_ITERATIONS), random_state=SEED_RUN)
+            df_train_seed = df_corpus.sample(n=int(SAMPLE_SIZE_TRAIN/AL_ITERATIONS), random_state=SEED_RUN)
             df_corpus = df_corpus[~df_corpus.index.isin(df_train_seed.index)]
         elif "disc" in METHOD:
             raise NotImplementedError
 
-        print("df_corpus.label_text.value_counts:\n", df_corpus.label_text.value_counts())
+        print("df_corpus.label_text.value_counts:\n", df_corpus.label_text.value_counts())"""
 
 
 
 # create df test
-# TODO make work beyond countries
-if "randomall" in GROUP:
+if "randomall" in GROUP_SAMPLE:
     if AL_ITERATIONS > 0:
         df_test = None
     else:
         df_test = df_cl[~df_cl.index.isin(df_train.index)]
-elif "random" in GROUP:
+elif "random" in GROUP_SAMPLE:
     # if df_train comes from specific group, remove this group from df_test
-    if AL_ITERATIONS > 0:
+    """if AL_ITERATIONS > 0:
         df_test = df_cl[~df_cl.index.isin(df_corpus.index)]
         if METHOD == "standard_dl":
             df_test = df_test[~df_test.index.isin(df_train_seed.index)]
         df_test = df_test[~df_test[GROUP_COL].str.contains(group_join)].copy(deep=True)
-    else:
-        df_test = df_cl[~df_cl.index.isin(df_train.index)]
-        df_test = df_test[~df_test[GROUP_COL].str.contains(group_join)].copy(deep=True)
+    else:"""
+    df_test = df_cl[~df_cl.index.isin(df_train.index)]
+    df_test = df_test[~df_test[GROUP_COL].str.contains(group_join)].copy(deep=True)
 
 
+# TODO: use proper non-downsampled test-set for final run
 # remove N no_topic & downsample for faster testing
 if "pimpo" in DATASET:
-    if AL_ITERATIONS > 0:
+    """if AL_ITERATIONS > 0:
         # reduce no-topic to N
         df_corpus = df_corpus.groupby(by="label_text", as_index=False, group_keys=False).apply(
             lambda x: x.sample(n=min(SAMPLE_NO_TOPIC, len(x)), random_state=SEED_RUN) if x.label_text.iloc[0] == "no_topic" else x)
@@ -406,21 +421,21 @@ if "pimpo" in DATASET:
         df_corpus = df_corpus.sample(n=min(SAMPLE_SIZE_CORPUS, len(df_corpus)), random_state=SEED_RUN)
         print("df_corpus.label_text.value_counts:\n", df_corpus.label_text.value_counts())
 
-        if ("random" in GROUP) and ("randomall" not in GROUP):
+        if ("random" in GROUP_SAMPLE) and ("randomall" not in GROUP_SAMPLE):
             # reduce no-topic to N
             df_test = df_test.groupby(by="label_text", as_index=False, group_keys=False).apply(
                 lambda x: x.sample(n=min(SAMPLE_NO_TOPIC, len(x)), random_state=SEED_RUN) if x.label_text.iloc[0] == "no_topic" else x)
             # reduce entire test-set to N
             df_test = df_test.sample(n=min(SAMPLE_SIZE_CORPUS, len(df_test)), random_state=SEED_RUN)
             print("df_test.label_text.value_counts:\n", df_test.label_text.value_counts())
+    else:"""
 
-    else:
-        # reduce no-topic to N
-        df_test = df_test.groupby(by="label_text", as_index=False, group_keys=False).apply(
-            lambda x: x.sample(n=min(SAMPLE_NO_TOPIC, len(x)), random_state=SEED_RUN) if x.label_text.iloc[0] == "no_topic" else x)
-        # reduce entire test-set to N
-        df_test = df_test.sample(n=min(SAMPLE_SIZE_CORPUS, len(df_test)), random_state=SEED_RUN)
-        print("df_test.label_text.value_counts:\n", df_test.label_text.value_counts())
+    # reduce no-topic to N
+    df_test = df_test.groupby(by="label_text", as_index=False, group_keys=False).apply(
+        lambda x: x.sample(n=min(SAMPLE_NO_TOPIC, len(x)), random_state=SEED_RUN) if x.label_text.iloc[0] == "no_topic" else x)
+    # reduce entire test-set to N
+    df_test = df_test.sample(n=min(SAMPLE_SIZE_TEST, len(df_test)), random_state=SEED_RUN)
+    print("df_test.label_text.value_counts:\n", df_test.label_text.value_counts())
 
 
 
@@ -466,25 +481,14 @@ D: The quote is not about immigration/integration.
 Answer: """
     label_text_map_generation = {"neutral": "A", "sceptical": "B", "supportive": "C", "no_topic": "D"}
 
-    instruction_short = """\n
-Which of the following categories applies best to the quote considering the context?
-neutral: The quote is neutral towards immigration/integration or describes the status quo of immigration/integration.
-sceptical: The quote is sceptical of immigration/integration.
-supportive: The quote is supportive of immigration/integration.
-other: The quote is not about immigration/integration.
-Answer: """
+    instruction_short = """Which of the following categories applies best to the quote below considering its context?
+ neutral: The quote is neutral towards immigration/integration or describes the status quo of immigration/integration.
+ sceptical: The quote is sceptical of immigration/integration.
+ supportive: The quote is supportive of immigration/integration.
+ other: The quote is not about immigration/integration.\n
+"""
     label_text_map_generation = {"neutral": "neutral", "sceptical": "sceptical", "supportive": "supportive", "no_topic": "other"}
 
-"""if "generation" in METHOD:
-    # adapt input text
-    df_corpus["text_prepared"] = df_corpus["text_prepared"] + instruction_short
-    # adapt label
-    df_corpus["label_text_original"] = df_corpus["label_text"]
-    df_corpus["label_text"] = df_corpus["label_text"].map(label_text_map_generation)
-    if ("random" in GROUP) and ("randomall" not in GROUP):
-        df_test["text_prepared"] = df_test["text_prepared"] + instruction_short
-        df_test["label_text_original"] = df_test["label_text"]
-        df_test["label_text"] = df_test["label_text"].map(label_text_map_generation)"""
 
 
 ## parameters relevant for generation models
@@ -520,7 +524,7 @@ if METHOD == "standard_dl":
     batch_size = 32
     #min_epochs = 10
     max_epochs = 30   #50 good value from NLI paper experience for around 500 - 5k data
-    n_data = len(df_corpus)  #len(df_train_format)
+    n_data = len(df_train)  #len(df_train_format)
     steps_one_epoch = n_data / batch_size
     n_epochs = 0
     n_steps = 0
@@ -535,29 +539,33 @@ elif METHOD == "nli_void":
     HYPER_PARAMS = {'lr_scheduler_type': 'linear', 'learning_rate': 2e-5, 'num_train_epochs': 15, 'seed': SEED_RUN, 'per_device_train_batch_size': 32, 'warmup_ratio': 0.40, 'weight_decay': 0.01, 'per_device_eval_batch_size': 200,
                     "evaluation_strategy": "no", "save_strategy": "no"}  # "do_eval": False
 elif "nli" in METHOD:
-    HYPER_PARAMS = {'lr_scheduler_type': 'linear', 'learning_rate': 2e-5, 'num_train_epochs': 5, 'seed': SEED_RUN, 'per_device_train_batch_size': 32, 'warmup_ratio': 0.40, 'weight_decay': 0.01, 'per_device_eval_batch_size': 200,
+    HYPER_PARAMS = {'lr_scheduler_type': 'linear', 'learning_rate': 2e-5, 'num_train_epochs': 7, 'seed': SEED_RUN, 'per_device_train_batch_size': 32 if MODEL_SIZE == "base" else 16, 'warmup_ratio': 0.20, 'weight_decay': 0.01, 'per_device_eval_batch_size': 200 if MODEL_SIZE == "base" else 80,
                     "evaluation_strategy": "no", "save_strategy": "no"}  # "do_eval": False
 elif "disc" in METHOD:
-    HYPER_PARAMS = {'lr_scheduler_type': 'linear', 'learning_rate': 2e-5, 'num_train_epochs': 10, 'seed': SEED_RUN, 'per_device_train_batch_size': 32, 'warmup_ratio': 0.40, 'weight_decay': 0.01, 'per_device_eval_batch_size': 200,
-                    "logging_steps": 1, "evaluation_strategy": "epoch", "save_strategy": "epoch"}  # "do_eval": False
+    HYPER_PARAMS = {'lr_scheduler_type': 'linear', 'learning_rate': 2e-5, 'num_train_epochs': 7, 'seed': SEED_RUN, 'per_device_train_batch_size': 32 if MODEL_SIZE == "base" else 16, 'warmup_ratio': 0.20, 'weight_decay': 0.01, 'per_device_eval_batch_size': 200 if MODEL_SIZE == "base" else 80,
+                    "logging_steps": 1, "evaluation_strategy": "no", "save_strategy": "no"}  # "do_eval": False
 elif "generation" in METHOD:
     HYPER_PARAMS = {
-        'lr_scheduler_type': 'linear', 'learning_rate': 5e-4, 'num_train_epochs': 10, 'seed': SEED_RUN, 'per_device_train_batch_size': 16-8, 'warmup_ratio': 0.20, 'weight_decay': 0.01, 'per_device_eval_batch_size': 64-32,
+        # First Flan-T5 paper (Palm) uses 5e-4 lr for all model sizes for fine-tuning, & constant lr, 80k~ steps, 64 batch
+        # flan collection paper uses 0.001 lr, constant lr, 100k steps, 128 batch
+        # similar reports here, between 1e-4 and 1e-3 https://discuss.huggingface.co/t/t5-finetuning-tips/684
+        'lr_scheduler_type': 'constant', 'learning_rate': 7e-4, 'num_train_epochs': 7, 'seed': SEED_RUN, 'per_device_train_batch_size': 16 if MODEL_SIZE == "base" else 8, 'warmup_ratio': 0.10, 'weight_decay': 0.01, 'per_device_eval_batch_size': 96 if MODEL_SIZE == "base" else 32,
         # ! need to set this to true, otherwise seq2seq-trainer is not used https://github.com/huggingface/transformers/blob/v4.28.1/src/transformers/trainer_seq2seq.py#L246
-        "predict_with_generate": True, "gradient_checkpointing": True, "gradient_accumulation_steps": 4,
-        "evaluation_strategy": "epoch", "save_strategy": "epoch"
+        "predict_with_generate": True, "gradient_checkpointing": True, "gradient_accumulation_steps": 2 if MODEL_SIZE == "base" else 4,
+        "evaluation_strategy": "no", "save_strategy": "no"
     }
 else:
     raise Exception("Method not implemented for hps")
 
+#TODO: adapt lr for model sizes
+# e.g. deberta-v3-large should have 9e-6 based on paper https://arxiv.org/pdf/2111.09543.pdf
 
 
 
 
 
 
-#### break where non-active learning code starts
-
+## break where non-active learning code starts
 
 # format data
 if METHOD in ["standard_dl", "dl_embed", "classical_ml"]:
@@ -570,8 +578,8 @@ elif "generation" in METHOD:
     df_train_format = df_train.copy(deep=True)
     df_test_format = df_test.copy(deep=True)
     # adapt input text
-    df_train_format["text_prepared"] = df_train_format["text_prepared"] + instruction_short
-    df_test_format["text_prepared"] = df_test_format["text_prepared"] + instruction_short
+    df_train_format["text_prepared"] = instruction_short + df_train_format["text_prepared"]
+    df_test_format["text_prepared"] = instruction_short + df_test_format["text_prepared"]
     # adapt label
     df_train_format["label_text_original"] = df_train_format["label_text"]
     df_test_format["label_text_original"] = df_test_format["label_text"]
@@ -611,14 +619,8 @@ dataset = tokenize_datasets(df_train_samp=df_train_format, df_test=df_test_forma
                             max_length=MODEL_MAX_LENGTH, generation_config=generation_config)
 
 
+
 ### create trainer
-
-# based on paper https://arxiv.org/pdf/2111.09543.pdf
-#if MODEL_SIZE == "large":
-#    HYPER_PARAMS.update({"per_device_eval_batch_size": 80, 'learning_rate': 9e-6})
-
-
-## create trainer
 
 train_args = set_train_args(hyperparams_dic=HYPER_PARAMS, training_directory=TRAINING_DIRECTORY, method=method_short,   #METHOD if "nli" not in METHOD else "nli",
                             generation_config=generation_config,
@@ -628,8 +630,13 @@ trainer = create_trainer(model=model, tokenizer=tokenizer, encoded_dataset=datas
                          method=method_short, label_text_alphabetical=label_text_alphabetical)
 
 # train
+start_time_train = time.time()
+
 trainer.train()
 
+end_time_train = time.time()
+train_time = end_time_train - start_time_train
+print("\nTrain time:", train_time, "\n")
 
 
 ### Evaluate
@@ -637,72 +644,68 @@ trainer.train()
 if METHOD != "generation":
     results_test = trainer.evaluate(eval_dataset=dataset["test"])  # eval_dataset=encoded_dataset["test"]
 else:
-    # ! will not contain certain elements like inference speed, loss
-    results_test = compute_metrics_generation(dataset=dataset, model=trainer.model, tokenizer=tokenizer, hyperparams_dic=HYPER_PARAMS, config_params=config_params)
+    # will not contain certain elements like eval_loss, 'eval_samples_per_second': 9.005, 'eval_steps_per_second': 0.045,
+    results_test = compute_metrics_generation(dataset=dataset, model=trainer.model, tokenizer=tokenizer, hyperparams_dic=HYPER_PARAMS, generation_config=generation_config)
+    # reverse changes to label_text (e.g. "no_topic" to "other")
+    label_text_map_generation_reverse = {value: key for key, value in label_text_map_generation.items()}
+    results_test["eval_label_gold_raw"] = pd.Series(results_test["eval_label_gold_raw"]).map(label_text_map_generation_reverse).tolist()
 
 print("\nTest results:")
-for key_iter, value_metrics in results_test.items():
-    if key_iter not in ["eval_label_gold_raw", "eval_label_predicted_raw"]:
-        print(f"{key_iter}: {value_metrics}")
-    #print({key: value for key, value in value_metrics_dic.items() if key not in ["eval_label_gold_raw", "eval_label_predicted_raw"]})
+results_test_cl = {key: value for key, value in results_test.items() if key not in ["eval_label_gold_raw", "eval_label_predicted_raw"]}
+print(results_test_cl)
 
-## save results
-n_sample_str = MAX_SAMPLE
+
+
+### save results
+import pickle
+import gzip
+
+n_sample_str = SAMPLE_SIZE_TRAIN
 while len(str(n_sample_str)) <= 3:
     n_sample_str = "0" + str(n_sample_str)
 
-df_results = pd.DataFrame([results_test])
+
+# merge prediction results with df_test to enable possible meta-data calculations etc. later
+df_results = pd.DataFrame(
+    {"label_pred": results_test["eval_label_predicted_raw"], "label_gold_pred_aligned": results_test["eval_label_gold_raw"]},
+    index=df_test.index
+)
+df_test_results = pd.concat([df_test, df_results], axis=1)
+
+if "generation" in METHOD:
+    assert (df_test_results["label_text"] == df_test_results["label_gold_pred_aligned"]).all(), "label_text and label_gold_pred_aligned should be the same"
+else:
+    assert (df_test_results["labels"] == df_test_results["label_gold_pred_aligned"]).all(), "labels and label_gold_pred_aligned should be the same"
+
+
+data_dic = {
+    "experiment_metadata": {
+        "dataset": DATASET, "group_sample_strategy": GROUP_SAMPLE, "group_col": GROUP_COL, "method": METHOD,
+        "model_name": MODEL_NAME, "sample_size_train": SAMPLE_SIZE_TRAIN, "sample_size_test": SAMPLE_SIZE_TEST,
+        "group_members": group_join.replace("\\b", ""), "seed_run": SEED_RUN, "n_run": N_RUN, "date": DATE, "hyperparams": HYPER_PARAMS,
+        "train_time": train_time, "model_size": MODEL_SIZE, "task": TASK, "model_params": model_params, "generation_config": generation_config,
+    },
+    "experiment_results": results_test_cl,
+    "df_train": df_train,
+    "df_test_results": df_test_results,
+}
+
 if SAVE_OUTPUTS:
-    #df_results.to_csv(f"./data-classified/{DATASET}/df_results_{DATASET}_{GROUP}_samp{n_sample_str}_tokrm{N_TOKENS_REMOVE}_seed{SEED_RUN}_{DATE}.csv", index=False)
-    df_results.to_csv(f"./results/{DATASET}/df_results_{DATASET}_{GROUP}_{METHOD}_samp{n_sample_str}_al_iter{AL_ITERATIONS}seed{SEED_RUN}_{DATE}.csv", index=False)
+    filename = f"./results/{DATASET}/results_{DATASET}_{GROUP_SAMPLE}_{GROUP_COL}_{METHOD}_{MODEL_NAME_SHORT}_samp{n_sample_str}_n_run{N_RUN}_seed{SEED_RUN}_{DATE}.pkl.gz"
+    # Use 'wb' to write binary data
+    with gzip.open(filename, 'wb') as f:
+        pickle.dump(data_dic, f)
+
+"""
+with gzip.open(filename, 'rb') as f:
+    data_dic_loaded = pickle.load(f)
+"""
 
 
 
 print("\nScript done.\n\n")
 
 
-
-
-
-#### prepare data for redoing figure from paper
-"""assert (df_test["label"] == results_test["eval_label_gold_raw"]).all
-df_test["label_pred"] = results_test["eval_label_predicted_raw"]
-df_test_format["label_pred"] = results_test["eval_label_predicted_raw"]
-
-## add classification probabilities to data to use for scale
-probabilities = clf.predict_proba(X_test)
-probabilities_max = [np.max(per_text_probability) for per_text_probability in probabilities]
-df_test_format["label_pred_probability"] = probabilities_max
-
-df_train["label_pred"] = [np.nan] * len(df_train["label"])
-
-df_cl_concat = pd.concat([df_train, df_test])
-
-# add label text for predictions
-label_text_map = {}
-for i, row in df_cl_concat[~df_cl_concat.label_text.duplicated(keep='first')].iterrows():
-    label_text_map.update({row["label"]: row["label_text"]})
-df_cl_concat["label_text_pred"] = df_cl_concat["label_pred"].map(label_text_map)
-
-## translate label pred back to -2 to +2 labels to enable mean calculation for correlation
-if TASK == "uk-leftright":
-    task_label_text_map_reversed = {value: key for key, value in task_label_text_map.items()}
-    df_cl_concat["label_scale_pred"] = df_cl_concat.label_text_pred.map(task_label_text_map_reversed)
-# in case of simplified -1 to +1 scale
-elif TASK == "uk-leftright-simple":
-    task_label_text_map_reversed = {value: key for key, value in task_label_text_map.items() if key not in [-2, 2]}
-    df_cl_concat["label_scale_pred"] = df_cl_concat.label_text_pred.map(task_label_text_map_reversed)
-"""
-
-## trim df to save storage
-"""df_cl_concat = df_cl_concat[['label', 'label_text', 'country_iso', 'language_iso', 'doc_id',
-                           'text_original', 'text_original_trans', 'text_preceding_trans', 'text_following_trans',
-                           # 'text_preceding', 'text_following', 'selection', 'certainty_selection', 'topic', 'certainty_topic', 'direction', 'certainty_direction',
-                           'rn', 'cmp_code', 'partyname', 'partyabbrev',
-                           'parfam', 'parfam_text', 'date', #'language_iso_fasttext', 'language_iso_trans',
-                           #'text_concat', 'text_concat_embed_multi', 'text_trans_concat',
-                           #'text_trans_concat_embed_en', 'text_trans_concat_tfidf', 'text_prepared',
-                           'label_pred', 'label_text_pred']]"""
 
 
 
