@@ -1,6 +1,6 @@
 #!/bin/bash
 # Set batch job requirements
-#SBATCH -t 02:00:00
+#SBATCH -t 04:00:00
 #SBATCH --partition=gpu
 #SBATCH --gpus=1
 #SBATCH --mail-type=BEGIN,END,FAIL
@@ -30,20 +30,34 @@ pip install -r requirements.txt
 #./batch-scripts/gpu.bash "google/electra-base-discriminator" "disc_short"
 #./batch-scripts/gpu.bash "google/flan-t5-base" "generation"
 
-dataset='pimpo'  # 'uk-leftright-econ', 'pimpo'
-task="pimpo-simple"  # "uk-leftright-simple", "pimpo"
+# for snellius run with terminal variables
+#sbatch --export=dataset="cap-merge",task="cap-merge",method="nli_short",group_col_lst="domain",group_sample_lst="randomall,random1",n_random_runs_total=6 ./meta-metrics-repo/batch-scripts/gpu.bash
+#sbatch --export=dataset="cap-merge",task="cap-merge",method="standard_dl",group_col_lst="domain",group_sample_lst="randomall,random1",n_random_runs_total=6 ./meta-metrics-repo/batch-scripts/gpu.bash
+#sbatch --export=dataset="coronanet",task="coronanet",method="nli_short",group_col_lst="year,ISO_A3,continent",group_sample_lst="randomall,random1",n_random_runs_total=6 ./meta-metrics-repo/batch-scripts/gpu.bash
+#sbatch --export=dataset="coronanet",task="coronanet",method="standard_dl",group_col_lst="year,ISO_A3,continent",group_sample_lst="randomall,random1",n_random_runs_total=6 ./meta-metrics-repo/batch-scripts/gpu.bash
+#sbatch --export=dataset="pimpo",task="pimpo-simple",method="nli_short",group_col_lst="country_iso,parfam_text,decade",group_sample_lst="randomall,random1",n_random_runs_total=6 ./meta-metrics-repo/batch-scripts/gpu.bash
+#sbatch --export=dataset="pimpo",task="pimpo-simple",method="standard_dl",group_col_lst="country_iso,parfam_text,decade",group_sample_lst="randomall,random1",n_random_runs_total=6 ./meta-metrics-repo/batch-scripts/gpu.bash
+#sbatch --export=dataset="cap-sotu",task="cap-sotu",method="nli_short",group_col_lst="pres_party,phase",group_sample_lst="randomall,random1",n_random_runs_total=6 ./meta-metrics-repo/batch-scripts/gpu.bash
+#sbatch --export=dataset="cap-sotu",task="cap-sotu",method="standard_dl",group_col_lst="pres_party,phase",group_sample_lst="randomall,random1",n_random_runs_total=6 ./meta-metrics-repo/batch-scripts/gpu.bash
+
+# convert variables that should be array from string to array
+IFS=',' read -ra group_col_lst <<< "$group_col_lst"
+IFS=',' read -ra group_sample_lst <<< "$group_sample_lst"
+
+#dataset=$dataset  #'coronanet' 'uk-leftright-econ', 'pimpo', cap-merge, cap-sotu
+#task=$task  #"coronanet" "uk-leftright-simple", "pimpo-simple", cap-merge, cap-sotu
 model="MoritzLaurer/DeBERTa-v3-base-mnli-fever-docnli-ling-2c"  #$1  #"MoritzLaurer/DeBERTa-v3-base-mnli-fever-docnli-ling-2c"   #"google/electra-base-discriminator"   #'google/flan-t5-base'  #'MoritzLaurer/DeBERTa-v3-large-mnli-fever-anli-ling-wanli'  #'MoritzLaurer/DeBERTa-v3-xsmall-mnli-fever-anli-ling-binary'  # "MoritzLaurer/DeBERTa-v3-base-mnli-fever-docnli-ling-2c", "google/flan-t5-base"
-method='nli_short'  #$2  #'nli_short'  # disc_short, standard_dl, nli_short, nli_long, nli_void, generation
+#method='nli_short'  #$2  #'nli_short'  # disc_short, standard_dl, nli_short, nli_long, nli_void, generation
 model_size='base'
 vectorizer='transformer'
-group_col_lst=("country_iso" "parfam_text")  # "country_iso", "parfam_text", "parfam_text_aggreg", "decade"
-group_sample_lst=("randomall" "random1")  # ("random1") ("random2") ("random3") ("randomall") ("nld" "esp" "dnk" "deu") ("CHR" "LEF" "LIB" "NAT" "SOC")
-study_date=20230620
+#group_col_lst=$group_col_lst  # ("year" "continent") "country_iso", "parfam_text", "parfam_text_aggreg", "decade"
+#group_sample_lst=$group_sample_lst  # ("randomall" "random1") ("random1") ("random2") ("random3") ("randomall") ("nld" "esp" "dnk" "deu") ("CHR" "LEF" "LIB" "NAT" "SOC")
+study_date=20230629
 sample_size_train_lst=(100 500)  # (100, 500)
 sample_size_no_topic=20000
 sample_size_test=6000
 #sample_size_corpus=5000
-n_random_runs_total=3
+#n_random_runs_total=6
 #n_tokens_remove_lst=(0 5 10)
 max_length=448  #512
 active_learning_iterations=0
@@ -70,7 +84,7 @@ do
                 --group_sample $group_sample --group_column $group_col \
                 --max_length $max_length --save_outputs \
                 --active_learning_iterations $active_learning_iterations \
-                &> ./results/pimpo/logs/run-$method-$model_size-$sample_size_train-$dataset-$group_sample-$group_col-$n_run-al_iter$active_learning_iterations-$study_date-logs.txt
+                &> ./results/$dataset/logs/run-$method-$model_size-$sample_size_train-$dataset-$group_sample-$group_col-$n_run-al_iter$active_learning_iterations-$study_date-logs.txt
       done
     done
   done
