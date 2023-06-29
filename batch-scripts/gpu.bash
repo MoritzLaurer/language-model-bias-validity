@@ -31,18 +31,29 @@ pip install -r requirements.txt
 #./batch-scripts/gpu.bash "google/flan-t5-base" "generation"
 
 # for snellius run with terminal variables
-#sbatch --export=dataset="cap-merge",task="cap-merge",method="nli_short",group_col_lst="domain",group_sample_lst="randomall,random1",n_random_runs_total=6 ./meta-metrics-repo/batch-scripts/gpu.bash
-#sbatch --export=dataset="cap-merge",task="cap-merge",method="standard_dl",group_col_lst="domain",group_sample_lst="randomall,random1",n_random_runs_total=6 ./meta-metrics-repo/batch-scripts/gpu.bash
-#sbatch --export=dataset="coronanet",task="coronanet",method="nli_short",group_col_lst="year,ISO_A3,continent",group_sample_lst="randomall,random1",n_random_runs_total=6 ./meta-metrics-repo/batch-scripts/gpu.bash
-#sbatch --export=dataset="coronanet",task="coronanet",method="standard_dl",group_col_lst="year,ISO_A3,continent",group_sample_lst="randomall,random1",n_random_runs_total=6 ./meta-metrics-repo/batch-scripts/gpu.bash
-#sbatch --export=dataset="pimpo",task="pimpo-simple",method="nli_short",group_col_lst="country_iso,parfam_text,decade",group_sample_lst="randomall,random1",n_random_runs_total=6 ./meta-metrics-repo/batch-scripts/gpu.bash
-#sbatch --export=dataset="pimpo",task="pimpo-simple",method="standard_dl",group_col_lst="country_iso,parfam_text,decade",group_sample_lst="randomall,random1",n_random_runs_total=6 ./meta-metrics-repo/batch-scripts/gpu.bash
-#sbatch --export=dataset="cap-sotu",task="cap-sotu",method="nli_short",group_col_lst="pres_party,phase",group_sample_lst="randomall,random1",n_random_runs_total=6 ./meta-metrics-repo/batch-scripts/gpu.bash
-#sbatch --export=dataset="cap-sotu",task="cap-sotu",method="standard_dl",group_col_lst="pres_party,phase",group_sample_lst="randomall,random1",n_random_runs_total=6 ./meta-metrics-repo/batch-scripts/gpu.bash
+#sbatch --output=./meta-metrics-repo/results/cap-merge/logs/output_nli.txt ./meta-metrics-repo/batch-scripts/gpu.bash "cap-merge" "cap-merge" "nli_short" "domain" "randomall,random1" 6
+#sbatch --output=./meta-metrics-repo/results/cap-merge/logs/output_standard.txt ./meta-metrics-repo/batch-scripts/gpu.bash "cap-merge" "cap-merge" "standard_dl" "domain" "randomall,random1" 6
+#sbatch --output=./meta-metrics-repo/results/coronanet/logs/output_nli.txt ./meta-metrics-repo/batch-scripts/gpu.bash "coronanet" "coronanet" "nli_short" "year,ISO_A3,continent" "randomall,random1" 6
+#sbatch --output=./meta-metrics-repo/results/coronanet/logs/output_standard.txt ./meta-metrics-repo/batch-scripts/gpu.bash "coronanet" "coronanet" "standard_dl" "year,ISO_A3,continent" "randomall,random1" 6
+#sbatch --output=./meta-metrics-repo/results/pimpo/logs/output_nli.txt ./meta-metrics-repo/batch-scripts/gpu.bash "pimpo" "pimpo-simple" "nli_short" "country_iso,parfam_text,decade" "randomall,random1" 6
+#sbatch --output=./meta-metrics-repo/results/pimpo/logs/output_standard.txt ./meta-metrics-repo/batch-scripts/gpu.bash "pimpo" "pimpo-simple" "standard_dl" "country_iso,parfam_text,decade" "randomall,random1" 6
+#sbatch --output=./meta-metrics-repo/results/cap-sotu/logs/output_nli.txt ./meta-metrics-repo/batch-scripts/gpu.bash "cap-sotu" "cap-sotu" "nli_short" "pres_party,phase" "randomall,random1" 6
+#sbatch --output=./meta-metrics-repo/results/cap-sotu/logs/output_standard.txt ./meta-metrics-repo/batch-scripts/gpu.bash "cap-sotu" "cap-sotu" "standard_dl" "pres_party,phase" "randomall,random1" 6
+
+# grab command line arguments
+dataset=$1
+task=$2
+method=$3
+group_col_lst=$4
+group_sample_lst=$5
+n_random_runs_total=$6
 
 # convert variables that should be array from string to array
-IFS=',' read -ra group_col_lst <<< "$group_col_lst"
-IFS=',' read -ra group_sample_lst <<< "$group_sample_lst"
+IFS=',' read -ra group_col_array <<< "$group_col_lst"
+IFS=',' read -ra group_sample_array <<< "$group_sample_lst"
+# debugging: echo each element of the arrays
+echo "group_col_array: ${group_col_array[@]}"
+echo "group_sample_array: ${group_sample_array[@]}"
 
 #dataset=$dataset  #'coronanet' 'uk-leftright-econ', 'pimpo', cap-merge, cap-sotu
 #task=$task  #"coronanet" "uk-leftright-simple", "pimpo-simple", cap-merge, cap-sotu
@@ -50,10 +61,10 @@ model="MoritzLaurer/DeBERTa-v3-base-mnli-fever-docnli-ling-2c"  #$1  #"MoritzLau
 #method='nli_short'  #$2  #'nli_short'  # disc_short, standard_dl, nli_short, nli_long, nli_void, generation
 model_size='base'
 vectorizer='transformer'
-#group_col_lst=$group_col_lst  # ("year" "continent") "country_iso", "parfam_text", "parfam_text_aggreg", "decade"
-#group_sample_lst=$group_sample_lst  # ("randomall" "random1") ("random1") ("random2") ("random3") ("randomall") ("nld" "esp" "dnk" "deu") ("CHR" "LEF" "LIB" "NAT" "SOC")
+#group_col_array=$group_col_array  # ("year" "continent") "country_iso", "parfam_text", "parfam_text_aggreg", "decade"
+#group_sample_array=$group_sample_array  # ("randomall" "random1") ("random1") ("random2") ("random3") ("randomall") ("nld" "esp" "dnk" "deu") ("CHR" "LEF" "LIB" "NAT" "SOC")
 study_date=20230629
-sample_size_train_lst=(100 500)  # (100, 500)
+sample_size_train_array=(100 500)  # (100, 500)
 sample_size_no_topic=20000
 sample_size_test=6000
 #sample_size_corpus=5000
@@ -62,21 +73,20 @@ sample_size_test=6000
 max_length=448  #512
 active_learning_iterations=0
 
-total_iteration_required=$(($n_random_runs_total * ${#group_sample_lst[@]} * ${#group_col_lst[@]} * ${#sample_size_train_lst[@]}))
-#total_iteration_required=$(($n_random_runs_total * ${#group_lst[@]}*${#n_tokens_remove_lst[@]}))
+total_iteration_required=$(($n_random_runs_total * ${#group_sample_array[@]} * ${#group_col_array[@]} * ${#sample_size_train_array[@]}))
 
 counter=0
-for sample_size_train in "${sample_size_train_lst[@]}"
+for sample_size_train in "${sample_size_train_array[@]}"
 do
-  for group_col in "${group_col_lst[@]}"
+  for group_col in "${group_col_array[@]}"
   do
-    for group_sample in "${group_sample_lst[@]}"
+    for group_sample in "${group_sample_array[@]}"
     do
       for n_run in $(seq 1 $n_random_runs_total)
       do
         ((counter++))
         echo "Starting iteration $counter, of total iterations $total_iteration_required"
-        echo "Variables iteration: group_sample $group_sample, and iteration $n_run"
+        echo "Variables iteration: group_sample $group_sample, group_col $group_col, and iteration $n_run"
         python analysis-transformers-run.py --dataset $dataset --task $task \
                 --method $method --model $model --vectorizer $vectorizer --study_date $study_date \
                 --sample_size_train $sample_size_train --sample_size_no_topic $sample_size_no_topic --sample_size_test $sample_size_test \
