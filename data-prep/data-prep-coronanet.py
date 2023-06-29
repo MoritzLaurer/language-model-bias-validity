@@ -33,7 +33,7 @@ print(len(df))
 ## Select relevant columns
 df_cl = df[['record_id', 'policy_id', 'entry_type', 'update_type', #'update_level', 'update_level_var',
        'description', #'date_announced', 'date_start', 'date_end', 'date_end_spec', 
-       'ISO_A3', # 'country',  'ISO_A2',
+       'ISO_A3', "ISO_A2", 'recorded_date', # 'country',  'ISO_A2',
        #'init_country_level', 'domestic_policy', 'province', 'ISO_L2', 'city',
        'type', 'type_sub_cat', 
        #'type_new_admin_coop', 'type_vac_cat', 'type_vac_mix', 'type_vac_reg', 'type_vac_purchase', 'type_vac_group',
@@ -49,6 +49,22 @@ df_cl = df[['record_id', 'policy_id', 'entry_type', 'update_type', #'update_leve
        #'dist_index_med_est', 'dist_index_low_est', 'dist_index_country_rank',
        'pdf_link', 'link', #'date_updated', 'recorded_date'
        ]].copy(deep=True)
+
+
+## add new meta-data columns
+# continents
+from pycountry_convert import country_alpha2_to_continent_code
+df_cl["ISO_A2"].replace("-", np.nan, inplace=True)
+df_cl["ISO_A3"].replace("-", np.nan, inplace=True)
+df_cl["continent"] = [country_alpha2_to_continent_code(iso2) if ((not pd.isna(iso2)) and (iso2 not in ['TL', 'VA'])) else np.nan for iso2 in df_cl["ISO_A2"]]
+# special case for country not covered by package: if in ISO_A2 column [TL, VA] then convert value in continent column to continent
+df_cl.loc[df_cl["ISO_A2"] == "VA", "continent"] = "EU"
+df_cl.loc[df_cl["ISO_A2"] == "TL", "continent"] = "AS"
+
+# time
+df_cl["year"] = df_cl["recorded_date"].apply(lambda x: str(x)[:4])
+df_cl["year"].value_counts()
+
 
 
 ## data cleaning
@@ -91,46 +107,67 @@ print(len(df_cl))
 
 # maintain and rename only key columns & rename colums so that trainer recognises them
 df_cl = df_cl.rename(columns={"description": "text", "type": "label_text"})
-# add numeric label column based on alphabetical label_text order
-df_cl["label"] = pd.factorize(df_cl["label_text"], sort=True)[0]
+# add numeric labels column based on alphabetical label_text order
+df_cl["labels"] = pd.factorize(df_cl["label_text"], sort=True)[0]
 
 # final update
 df_cl = df_cl.reset_index(drop=True)
 df_cl.index = df_cl.index.rename("idx")  # name index. provides proper column name in dataset object downstream 
 
+# final clean
+df_cl = df_cl[~df_cl.continent.isna()]
+df_cl = df_cl[~df_cl.year.isna()]
+
+
+# reorder columns
+print(df_cl.columns)
+df_cl = df_cl[["labels", "label_text", "text", "type_sub_cat", "record_id", "policy_id", "ISO_A3", "continent", "recorded_date", "year", "pdf_link", "link"]]
+
+
+
+
+## inspect labels distribution
 print("\n")
 df_cl.label_text.value_counts()
+df_cl.ISO_A3.value_counts()
+df_cl.year.value_counts()
+df_cl.continent.value_counts()
+
+## Challenge: too many classes; very imbalanced
+# not sure what sample size to take
 
 
-# ### Train-Test-Split
-print(df_cl.columns)
-df_cl = df_cl[["label", "label_text", "text", "type_sub_cat", "record_id", "policy_id", "ISO_A3", "pdf_link", "link"]]
+# for testing, only use top 4 classes. Same n_class as PimPo
+top_n_classes = 4
+df_cl = df_cl[df_cl.label_text.isin(df_cl.label_text.value_counts()[:top_n_classes].index)]
+df_cl.loc[:, "labels"] = df_cl.label_text.factorize(sort=True)[0]
 
-### simplified dataset
+## train-test split
 from sklearn.model_selection import train_test_split
 
-df_train, df_test = train_test_split(df_cl, test_size=0.3, random_state=SEED_GLOBAL, stratify=df_cl["label_text"])
+df_train, df_test = train_test_split(df_cl, test_size=0.2, random_state=42, stratify=df_cl["label_text"])
 
-# sample for faster testing before final runs
-samp_per_class_max = 100
-df_test_samp = df_test.groupby(by="label_text", group_keys=False, as_index=False, sort=False).apply(lambda x: x.sample(n=min(len(x), samp_per_class_max), random_state=SEED_GLOBAL))
+# down sample test set
+# no need to downsample, already only 3842 texts
 
-print(f"Overall train size: {len(df_train)}")
-print(f"Overall test size: {len(df_test)} - sampled test size: {len(df_test_samp)}")
-df_train_test_distribution = pd.DataFrame([df_train.label_text.value_counts().rename("train"), df_test.label_text.value_counts().rename("test"), 
-                                           df_test_samp.label_text.value_counts().rename("test_sample"), df_cl.label_text.value_counts().rename("all")]).transpose()
-df_train_test_distribution
+# save to disk
+df_cl.to_csv(f"./data-clean/df_coronanet_all.zip",
+                compression={"method": "zip", "archive_name": f"df_coronanet_all.csv"}, index=False)
+df_train.to_csv(f"./data-clean/df_coronanet_train.zip",
+                compression={"method": "zip", "archive_name": f"df_coronanet_train.csv"}, index=False)
+df_test.to_csv(f"./data-clean/df_coronanet_test.zip",
+                compression={"method": "zip", "archive_name": f"df_coronanet_test.csv"}, index=False)
 
 
-### Save data
 
-# dataset statistics
-text_length = [len(text) for text in df_cl.text]
-print("Average number of characters in text: ", int(np.mean(text_length)), "\n")
+# for testing, only use top 4 classes. Same n_class as PimPo
+top_n_classes = 4
+test = df_cl[df_cl.label_text.isin(df_cl.label_text.value_counts()[:top_n_classes].index)]
+test2 = test.groupby("continent", group_keys=True, as_index=True).apply(lambda x: x.label_text.value_counts())
+test3 = test.groupby("year", group_keys=True, as_index=True).apply(lambda x: x.label_text.value_counts())
+print("Overall label distribution per group member:\n", test2)
+print("Overall label distribution per group member:\n", test3)
+print("Overall label distribution:\n", test.label_text.value_counts())
 
-print(os.getcwd())
-
-df_cl.to_csv("./data_clean/df_coronanet_20220124_all.csv")
-df_train.to_csv("./data_clean/df_coronanet_20220124_train.csv")
-df_test.to_csv("./data_clean/df_coronanet_20220124_test.csv")
+# => works for 1k sample
 
