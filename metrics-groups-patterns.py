@@ -5,7 +5,7 @@ import os
 import pickle
 import gzip
 
-dataset_lst = ["pimpo", "coronanet", "cap-merge"]
+dataset_lst = ["pimpo", "coronanet", "cap-merge", "cap-sotu"]
 directory = "./results/"
 
 data_dic_lst = []
@@ -26,7 +26,7 @@ for dataset in dataset_lst:
 data_dic_results_lst = []
 for data_dic in data_dic_lst:
     experiment_metadata_to_keep = [
-        'dataset', 'group_sample_strategy', 'group_col', 'method', 'model_name', 'sample_size_train', 'sample_size_test',
+        'dataset', 'group_sample_strategy', 'group_col', 'method', 'model_name', 'sample_size_train',
         'group_members', 'seed_run', 'n_run', 'date', 'train_time', 'model_size', 'task'
     ]
     experiment_metadata = {key: value for key, value in data_dic["experiment_metadata"].items() if key in experiment_metadata_to_keep}
@@ -47,7 +47,7 @@ df_results = df_results[df_results["method"].str.contains("nli")]
 df_results.drop(columns=[
     'eval_accuracy_not_b', 'eval_precision_macro', 'eval_recall_macro', 'eval_precision_micro', 'eval_recall_micro',
     'eval_loss', 'eval_runtime', 'eval_samples_per_second', 'eval_steps_per_second', 'epoch',
-    "seed_run", "n_run", "sample_size_test",
+    "seed_run", "n_run",
     "train_time"
     ], inplace=True)
 
@@ -58,7 +58,7 @@ df_results_mean.index = df_results_mean["group_sample_strategy"] + "_" + df_resu
                         + "_" + df_results_mean["model_size"] + "_" + df_results_mean["group_col"]
 
 
-df_results_mean = df_results_mean.round(2)
+df_results_mean = df_results_mean.round(4)
 df_results_mean.rename(columns={'eval_f1_macro': 'f1_macro', 'eval_f1_micro': "f1_micro",
                                       'eval_accuracy_balanced': "accuracy_balanced"}, inplace=True)
 #df_results_mean.drop(columns=["f1_micro"], inplace=True)
@@ -80,6 +80,44 @@ df_results_mean_difference.sort_values(["sample_size_train", "method", "group_sa
 # inspect individual run results
 df_results.sort_values(["group_col", "group_members", "method"], ascending=True, inplace=True)
 
+
+### viz
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+# cleaning
+df_results_mean_difference.method.replace("standard_dl_nli", "standard_dl", inplace=True)
+
+# get groups ordered by degree of bias
+groups_degree_bias = df_results_mean_difference.groupby("group_col").apply(lambda x: x.f1_macro_diff.mean()).sort_values(ascending=False)
+groups_degree_bias_index = groups_degree_bias.index
+df_results_mean_difference.loc[:,'group_col'] = pd.Categorical(
+    df_results_mean_difference['group_col'],
+    categories=groups_degree_bias_index,
+    ordered=True
+)
+
+df_results_mean_difference_100 = df_results_mean_difference[df_results_mean_difference.sample_size_train == 100]
+plot_100 = sns.barplot(data=df_results_mean_difference_100, x="group_col", y="f1_macro_diff", hue="method")
+plot_100.set_title('Training data bias effects (100 data_train)')
+plot_100.set_ylabel('F1 macro difference: random sample vs. 1-group sample')
+plot_100.set_xlabel('Groups')
+plt.grid(color='grey', linestyle='-', linewidth=0.25, alpha=0.5)
+plt.xticks(rotation=30)
+plt.tight_layout()
+plt.savefig('./viz/results_difference_100data.png')
+plt.show()
+
+df_results_mean_difference_500 = df_results_mean_difference[df_results_mean_difference.sample_size_train == 500]
+plot_500 = sns.barplot(data=df_results_mean_difference_500, x="group_col", y="f1_macro_diff", hue="method")
+plot_500.set_title('Training data bias effects (500 data_train)')
+plot_500.set_ylabel('F1 macro difference: random sample vs. 1-group sample')
+plot_100.set_xlabel('Groups')
+plt.grid(color='grey', linestyle='-', linewidth=0.25, alpha=0.5)
+plt.xticks(rotation=30)
+plt.tight_layout()
+plt.savefig('./viz/results_difference_500data.png')
+plt.show()
 
 
 # write to disk
