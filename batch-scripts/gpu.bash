@@ -1,8 +1,9 @@
 #!/bin/bash
 # Set batch job requirements
-#SBATCH -t 04:00:00
+#SBATCH -t 00:20:00
 #SBATCH --partition=gpu
-#SBATCH --gpus=1
+#SBATCH -N 1
+#SBATCH --gpus-per-node=4
 #SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --mail-user=m.laurer@vu.nl
 #SBATCH --job-name=gpu
@@ -10,6 +11,8 @@
 # Loading modules for Snellius
 module load 2021
 module load Python/3.9.5-GCCcore-10.3.0
+
+###SBATCH --gpus=4
 
 # set correct working directory
 cd ./meta-metrics-repo
@@ -40,6 +43,14 @@ pip install -r requirements.txt
 #sbatch --output=./meta-metrics-repo/results/cap-sotu/logs/output_nli.txt ./meta-metrics-repo/batch-scripts/gpu.bash "cap-sotu" "cap-sotu" "nli_short" "pres_party,phase" "randomall,random1" 6
 #sbatch --output=./meta-metrics-repo/results/cap-sotu/logs/output_standard.txt ./meta-metrics-repo/batch-scripts/gpu.bash "cap-sotu" "cap-sotu" "standard_dl" "pres_party,phase" "randomall,random1" 6
 
+# UL2 test
+#./meta-metrics-repo/batch-scripts/gpu.bash "pimpo" "pimpo-simple" "generation" "country_iso" "randomall" 1 > ./meta-metrics-repo/results/pimpo/logs/output_ul2.txt
+#sbatch --output=./meta-metrics-repo/results/pimpo/logs/output_ul2.txt ./meta-metrics-repo/batch-scripts/gpu.bash "pimpo" "pimpo-simple" "generation" "country_iso" "randomall" 1
+# Get the master node
+MASTER_NODE=$(srun --nodes=1 --ntasks=1 hostname)
+# Export the master node
+export MASTER_ADDR=${MASTER_NODE}
+
 # grab command line arguments
 dataset=$1
 task=$2
@@ -57,7 +68,7 @@ echo "group_sample_array: ${group_sample_array[@]}"
 
 #dataset=$dataset  #'coronanet' 'uk-leftright-econ', 'pimpo', cap-merge, cap-sotu
 #task=$task  #"coronanet" "uk-leftright-simple", "pimpo-simple", cap-merge, cap-sotu
-model="MoritzLaurer/DeBERTa-v3-base-mnli-fever-docnli-ling-2c"  #$1  #"MoritzLaurer/DeBERTa-v3-base-mnli-fever-docnli-ling-2c"   #"google/electra-base-discriminator"   #'google/flan-t5-base'  #'MoritzLaurer/DeBERTa-v3-large-mnli-fever-anli-ling-wanli'  #'MoritzLaurer/DeBERTa-v3-xsmall-mnli-fever-anli-ling-binary'  # "MoritzLaurer/DeBERTa-v3-base-mnli-fever-docnli-ling-2c", "google/flan-t5-base"
+model="/gpfs/home5/laurerm/models_local/flan-ul2"  #"MoritzLaurer/DeBERTa-v3-base-mnli-fever-docnli-ling-2c"  #$1  #"MoritzLaurer/DeBERTa-v3-base-mnli-fever-docnli-ling-2c"   #"google/electra-base-discriminator"   #'google/flan-t5-base'  #'MoritzLaurer/DeBERTa-v3-large-mnli-fever-anli-ling-wanli'  #'MoritzLaurer/DeBERTa-v3-xsmall-mnli-fever-anli-ling-binary'  # "MoritzLaurer/DeBERTa-v3-base-mnli-fever-docnli-ling-2c", "google/flan-t5-base"
 #method='nli_short'  #$2  #'nli_short'  # disc_short, standard_dl, nli_short, nli_long, nli_void, generation
 model_size='base'
 vectorizer='transformer'

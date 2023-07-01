@@ -102,11 +102,11 @@ if EXECUTION_TERMINAL == True:
 else:
     # parse args if not in terminal, but in script
     args = parser.parse_args([
-        "--task", "cap-sotu",  # pimpo-simple, uk-leftright-simple, uk-leftright
-        "--dataset", "cap-sotu",  # uk-leftright-econ, pimpo
+        "--task", "pimpo-simple",  # pimpo-simple, uk-leftright-simple, uk-leftright
+        "--dataset", "pimpo",  # uk-leftright-econ, pimpo
         "--vectorizer", "transformer",
-        "--model", "MoritzLaurer/DeBERTa-v3-xsmall-mnli-fever-anli-ling-binary",  #"google/flan-t5-small",  #"google/electra-small-discriminator",  #"MoritzLaurer/DeBERTa-v3-xsmall-mnli-fever-anli-ling-binary",  #"google/flan-t5-small",
-        "--method", "nli_short",  #"nli_short",  #"generation",
+        "--model", "google/flan-t5-small",  #"google/flan-t5-small",  #"google/electra-small-discriminator",  #"MoritzLaurer/DeBERTa-v3-xsmall-mnli-fever-anli-ling-binary",  #"google/flan-t5-small",
+        "--method", "generation",  #"nli_short",  #"generation",
         "--sample_size_train", "50", "--sample_size_no_topic", "5000",
         "--study_date", "20230601",
         "--n_run", "1", "--n_random_runs_total", "3",
@@ -188,7 +188,8 @@ elif "large" in MODEL_NAME.lower():
 elif "xl" in MODEL_NAME.lower():
     MODEL_SIZE = "xl"
 else:
-    raise NotImplementedError(f"Model size for {MODEL_NAME} not implemented.")
+    MODEL_SIZE = "unspecified"
+    #raise NotImplementedError(f"Model size for {MODEL_NAME} not implemented.")
 
 
 ##### load dataset
@@ -450,7 +451,6 @@ elif "random" in GROUP_SAMPLE:
     df_test = df_test[~df_test[GROUP_COL].astype(str).str.contains(group_join)].copy(deep=True)
 """
 
-# TODO: use proper non-downsampled test-set for final run
 # remove N no_topic & downsample for faster testing
 #if "pimpo" in DATASET:
 if EXECUTION_TERMINAL == False:
@@ -549,7 +549,8 @@ if "generation" in METHOD:
      neutral: The quote is neutral towards immigration/integration or describes the status quo of immigration/integration.
      sceptical: The quote is sceptical of immigration/integration.
      supportive: The quote is supportive of immigration/integration.
-     other: The quote is not about immigration/integration.\n
+     other: The quote is not about immigration/integration.
+     Constraint for your response: Only respond one of these options: neutral, sceptical, supportive, other. Respond nothing else.\n
     """
         label_text_map_generation = {"neutral": "neutral", "sceptical": "sceptical", "supportive": "supportive", "no_topic": "other"}
 
@@ -570,12 +571,14 @@ if "generation" in METHOD:
         #load_in_8bit=True,
         "device_map": "auto",
         "offload_folder": "offload",
-        "offload_state_dict": True
+        "offload_state_dict": True,
+        #"no_split_module_classes": ["T5Block"],
+        #"dtype": torch.bfloat16
     }
     from transformers import GenerationConfig
     config_params = {
         "max_new_tokens": 7,
-        "num_beams": 3,
+        "num_beams": 2,
         #"generation_num_beams": 5,  # https://github.com/huggingface/transformers/blob/68287689f2f0d8b7063c400230b3766987abf18d/src/transformers/training_args_seq2seq.py#L42
         "num_return_sequences": 1,
         "temperature": 0,  # default: 1.0
@@ -707,7 +710,8 @@ trainer = create_trainer(model=model, tokenizer=tokenizer, encoded_dataset=datas
 # train
 start_time_train = time.time()
 
-trainer.train()
+if not "ul2" in MODEL_NAME:
+    trainer.train()
 
 end_time_train = time.time()
 train_time = end_time_train - start_time_train
@@ -720,7 +724,11 @@ if "generation" not in METHOD:
     results_test = trainer.evaluate(eval_dataset=dataset["test"])  # eval_dataset=encoded_dataset["test"]
 else:
     # will not contain certain elements like eval_loss, 'eval_samples_per_second': 9.005, 'eval_steps_per_second': 0.045,
-    results_test = compute_metrics_generation(dataset=dataset, model=trainer.model, tokenizer=tokenizer, hyperparams_dic=HYPER_PARAMS, generation_config=generation_config)
+    results_test = compute_metrics_generation(
+        dataset=dataset, model=trainer.model, tokenizer=tokenizer,
+        hyperparams_dic=HYPER_PARAMS, generation_config=generation_config,
+        use_accelerator=True
+    )
     # reverse changes to label_text (e.g. "no_topic" to "other")
     label_text_map_generation_reverse = {value: key for key, value in label_text_map_generation.items()}
     results_test["eval_label_gold_raw"] = pd.Series(results_test["eval_label_gold_raw"]).map(label_text_map_generation_reverse).tolist()

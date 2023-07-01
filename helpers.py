@@ -123,11 +123,30 @@ def load_model_tokenizer(model_name=None, method=None, label_text_alphabetical=N
         # load model with config
         model = AutoModelForSequenceClassification.from_pretrained(model_name, config=config, ignore_mismatched_sizes=True);
     elif method == "generation":
-        tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True, model_max_length=model_max_length);
-        model = AutoModelForSeq2SeqLM.from_pretrained(model_name, **model_params);
-        # overwriting generation config in model is depricated. should be done when calling .generate() or when instantiating Seq2SeqTrainingArguments
-        #generation_config = GenerationConfig.from_pretrained(model_name, **config_params)
-        #model.generation_config = generation_config
+        if "ul2" in model_name:
+            from accelerate import init_empty_weights, load_checkpoint_and_dispatch
+            tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True, model_max_length=model_max_length);
+            config = AutoConfig.from_pretrained(model_name)
+            with init_empty_weights():
+                #model = AutoModelForSeq2SeqLM.from_pretrained(config)
+                model = AutoModelForSeq2SeqLM.from_config(config)
+            model.tie_weights()
+            model = load_checkpoint_and_dispatch(
+                model=model,
+                checkpoint=model_name,
+                device_map="auto",
+                no_split_module_classes=["T5Block"],
+                # offload_folder="/tmp/",
+                dtype=torch.bfloat16,
+            )
+            #accelerator = Accelerator()
+            #model = accelerator.prepare(model)
+        else:
+            tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True, model_max_length=model_max_length);
+            model = AutoModelForSeq2SeqLM.from_pretrained(model_name, **model_params);
+            # overwriting generation config in model is depricated. should be done when calling .generate() or when instantiating Seq2SeqTrainingArguments
+            #generation_config = GenerationConfig.from_pretrained(model_name, **config_params)
+            #model.generation_config = generation_config
     elif method == "disc":
         from transformers import ElectraConfig
         tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True, model_max_length=model_max_length);
@@ -140,7 +159,8 @@ def load_model_tokenizer(model_name=None, method=None, label_text_alphabetical=N
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"Device: {device}")
-    model.to(device);
+    if "ul2" not in model_name:
+        model.to(device);
 
     return model, tokenizer
 
@@ -319,7 +339,7 @@ def compute_metrics_classical_ml(label_pred, label_gold, label_text_alphabetical
     return metrics
 
 
-def compute_metrics_generation(dataset=None, model=None, tokenizer=None, hyperparams_dic=None, generation_config=None):
+def compute_metrics_generation(dataset=None, model=None, tokenizer=None, hyperparams_dic=None, generation_config=None, use_accelerator=False):
     # function copied and adapted from ActiveLLM, so contains some unnecessary code
     clean_memory()
     start_time = time.time()  # Store current time
@@ -353,17 +373,39 @@ def compute_metrics_generation(dataset=None, model=None, tokenizer=None, hyperpa
     dataset_inputs = TokenizedTextDataset(inputs)
     dataloader = DataLoader(dataset_inputs, batch_size=hyperparams_dic["per_device_eval_batch_size"], shuffle=False)
 
+    if use_accelerator:
+        from accelerate import Accelerator
+        accelerator = Accelerator()
+        model, dataloader = accelerator.prepare(model, dataloader)
+
+        from accelerate.logging import get_logger
+        logger = get_logger(__name__, log_level="INFO")
+        logger.info("My log", main_process_only=True)
+        logger.debug("My log", main_process_only=True)
+
+
     # batched inference
     #reconstructed_scores = []
     labels_pred = []
     #for batch in tqdm.tqdm(dataloader, desc="Inference"):
     for batch in dataloader:
-        inputs_batched = {k: v.to(model.device) for k, v in batch.items()}
-        outputs = model.generate(
-            **inputs_batched,
-            #**{key: value for key, value in config_params.items() if key != "generation_num_beams"},
-            generation_config=generation_config,
-        )
+        if use_accelerator:
+            print("Batch N during inference")
+            logger.info("Logger: Batch N during inference", main_process_only=True)
+            model.eval()
+            inputs_batched = {k: v.to(accelerator.device) for k, v in batch.items()}
+            #outputs = accelerator.unwrap_model(model).generate(
+            outputs = model.generate(
+                **inputs_batched,
+                generation_config=generation_config,
+            )
+        else:
+            inputs_batched = {k: v.to(model.device) for k, v in batch.items()}
+            outputs = model.generate(
+                **inputs_batched,
+                generation_config=generation_config,
+            )
+
 
         """# compute transition scores for sequences differently if no beam search
         if config_params["num_beams"] == 1:
