@@ -36,11 +36,10 @@ for data_dic in data_dic_lst:
 df_results = pd.DataFrame(data_dic_results_lst)
 
 # give different method name to standard_dl with electra or NLI
-df_results.loc[(df_results["method"] == "standard_dl") & (df_results["model_name"].str.contains("electra")), "method"] = "standard_dl_electra"
-df_results.loc[(df_results["method"] == "standard_dl") & (df_results["model_name"].str.contains("nli")), "method"] = "standard_dl_nli"
-
-# !! Only do some tests on NLI data
-df_results = df_results[df_results["method"].str.contains("nli")]
+#df_results.loc[(df_results["method"] == "standard_dl") & (df_results["model_name"].str.contains("electra")), "method"] = "standard_dl_electra"
+#df_results.loc[(df_results["method"] == "standard_dl") & (df_results["model_name"].str.contains("nli")), "method"] = "standard_dl_nli"
+# Only do some tests on NLI data
+#df_results = df_results[df_results["method"].str.contains("nli")]
 
 
 # calculate mean over the random seeds
@@ -81,12 +80,13 @@ df_results_mean_difference.sort_values(["sample_size_train", "method", "group_sa
 df_results.sort_values(["group_col", "group_members", "method"], ascending=True, inplace=True)
 
 
+
 ### viz
 import seaborn as sns
 import matplotlib.pyplot as plt
 
 # cleaning
-df_results_mean_difference.method.replace("standard_dl_nli", "standard_dl", inplace=True)
+#df_results_mean_difference.method.replace("standard_dl_nli", "standard_dl", inplace=True)
 
 # get groups ordered by degree of bias
 groups_degree_bias = df_results_mean_difference.groupby("group_col").apply(lambda x: x.f1_macro_diff.mean()).sort_values(ascending=False)
@@ -105,7 +105,7 @@ plot_100.set_xlabel('Groups')
 plt.grid(color='grey', linestyle='-', linewidth=0.25, alpha=0.5)
 plt.xticks(rotation=30)
 plt.tight_layout()
-plt.savefig('./viz/results_difference_100data.png')
+#plt.savefig('./viz/results_difference_100data.png')
 plt.show()
 
 df_results_mean_difference_500 = df_results_mean_difference[df_results_mean_difference.sample_size_train == 500]
@@ -116,7 +116,7 @@ plot_100.set_xlabel('Groups')
 plt.grid(color='grey', linestyle='-', linewidth=0.25, alpha=0.5)
 plt.xticks(rotation=30)
 plt.tight_layout()
-plt.savefig('./viz/results_difference_500data.png')
+#plt.savefig('./viz/results_difference_500data.png')
 plt.show()
 
 
@@ -126,3 +126,9 @@ plt.show()
 #df_metrics_comparison_merged.to_excel(f"/Users/moritzlaurer/Dropbox/PhD/Papers/meta-metrics/meta-metrics-repo/results/pimpo/df_metrics_decrease_countries_samp{n_sample}.xlsx")
 
 
+
+
+### test
+test = df_results_mean_difference.groupby(["method", "group_sample_strategy", "sample_size_train"], as_index=False)[["f1_macro", "f1_macro_diff"]].mean().round(3)
+
+print(test)

@@ -13,7 +13,7 @@ df_gold_cl = df_gold[(df_gold.scale == "Economic") & (df_gold.source == "Experts
 df_gold_cl = df_gold_cl.sort_values("manifestoid")
 
 ## read prediction data
-df_pred = pd.read_csv(f"./data-classified/benoit1/df_benoit1_pred_test1.zip")
+df_pred = pd.read_csv(f"./data-classified/uk-leftright-econ/df_benoit1_pred_test1.zip")
 # remove training data
 df_pred_cl = df_pred[~df_pred.label_pred.isna()]
 # aggregate to manifesto level

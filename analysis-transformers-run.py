@@ -28,18 +28,6 @@ from helpers import (
     load_model_tokenizer, tokenize_datasets, set_train_args, create_trainer, format_nli_trainset, format_nli_testset
 )
 
-# load latest version of ActiveLLM
-"""if not EXECUTION_TERMINAL:
-    sys.path.insert(0, "/Users/moritzlaurer/Dropbox/PhD/open-source/ActiveLLM")
-else:
-    sys.path.insert(0, "/gpfs/home5/laurerm/meta-metrics-repo/ActiveLLM")
-from active_learner import ActiveLearner
-# reload in case of updates in active_learner.py
-import importlib
-import active_learner
-importlib.reload(active_learner)
-from active_learner import ActiveLearner"""
-
 
 # Create the argparse to pass arguments via terminal
 import argparse
@@ -87,9 +75,6 @@ parser.add_argument('-g_col', '--group_column', type=str,
 parser.add_argument('-max_l', '--max_length', type=int, #nargs='+',
                     help='max n tokens')
 
-parser.add_argument('-al_iter', '--active_learning_iterations', type=int, #nargs='+',
-                    help='max n tokens')
-
 
 ## choose arguments depending on execution in terminal or in script for testing
 if EXECUTION_TERMINAL == True:
@@ -102,17 +87,17 @@ if EXECUTION_TERMINAL == True:
 else:
     # parse args if not in terminal, but in script
     args = parser.parse_args([
-        "--task", "pimpo-simple",  # pimpo-simple, uk-leftright-simple, uk-leftright
-        "--dataset", "pimpo",  # uk-leftright-econ, pimpo
+        "--task", "cap-sotu",  # cap-merge pimpo-simple, uk-leftright-simple, uk-leftright
+        "--dataset", "cap-sotu",  # cap-merge uk-leftright-econ, pimpo
         "--vectorizer", "transformer",
-        "--model", "google/flan-t5-small",  #"google/flan-t5-small",  #"google/electra-small-discriminator",  #"MoritzLaurer/DeBERTa-v3-xsmall-mnli-fever-anli-ling-binary",  #"google/flan-t5-small",
-        "--method", "generation",  #"nli_short",  #"generation",
-        "--sample_size_train", "50", "--sample_size_no_topic", "5000",
+        "--model", "MoritzLaurer/DeBERTa-v3-xsmall-mnli-fever-anli-ling-binary",  #"google/flan-t5-small",  #"google/electra-small-discriminator",  #"MoritzLaurer/DeBERTa-v3-xsmall-mnli-fever-anli-ling-binary",  #"google/flan-t5-small",
+        "--method", "standard_dl",  #"nli_short",  #"generation",
+        "--sample_size_train", "500", "--sample_size_no_topic", "5000",
         "--study_date", "20230601",
         "--n_run", "1", "--n_random_runs_total", "3",
         "--group_sample", "randomall", "--max_length", "256",  #"--n_tokens_remove", "0",
-        "--active_learning_iterations", "0", "--sample_size_test", "500",  #"--sample_size_corpus", "500",
-        "--group_column", "pres_party",  # "country_iso", "parfam_text", "parfam_text_aggreg", "decade"
+        "--sample_size_test", "500",  #"--sample_size_corpus", "500",
+        "--group_column", "pres_party",  # "domain", "country_iso", "parfam_text", "parfam_text_aggreg", "decade"
         #"--save_outputs"
     ])
 
@@ -132,14 +117,6 @@ GROUP_SAMPLE = args.group_sample
 GROUP_COL = args.group_column
 
 MODEL_MAX_LENGTH = args.max_length
-AL_ITERATIONS = args.active_learning_iterations
-if AL_ITERATIONS > 0:
-    print("AL_ITERATIONS: ", AL_ITERATIONS)
-    N_SAMPLES_PER_AL_ITER = int(SAMPLE_SIZE_TRAIN/AL_ITERATIONS)
-    print(f"For sample size {SAMPLE_SIZE_TRAIN}, this means {N_SAMPLES_PER_AL_ITER} samples per iteration.")
-else:
-    print("No active learning.")
-    N_SAMPLES_PER_AL_ITER = None
 
 
 # set global seed for reproducibility and against seed hacking
@@ -193,9 +170,6 @@ else:
 
 
 ##### load dataset
-"""if DATASET == "uk-leftright-econ":
-    df = pd.read_csv(f"./data-clean/benoit_leftright_sentences.zip", engine='python')
-    df_cl = df.copy(deep=True)"""
 if "pimpo" in DATASET:
     df = pd.read_csv("./data-clean/df_pimpo_samp_train.zip", engine="python")
     df_test = pd.read_csv("./data-clean/df_pimpo_samp_test.zip", engine="python")
@@ -204,89 +178,21 @@ elif "coronanet" in DATASET:
     df = pd.read_csv("./data-clean/df_coronanet_train.zip", engine="python")
     df_test = pd.read_csv("./data-clean/df_coronanet_test.zip", engine="python")
     df_cl = df.copy(deep=True)
-    # for testing, only use top 4 classes. Same n_class as PimPo
-    #top_n_classes = 4
-    #df_cl = df[df.label_text.isin(df.label_text.value_counts()[:top_n_classes].index)]
 elif "cap-merge" in DATASET:
     df = pd.read_csv("./data-clean/df_cap_merge_train.zip", engine="python")
     df_test = pd.read_csv("./data-clean/df_cap_merge_test.zip", engine="python")
     df_cl = df.copy(deep=True)
     if GROUP_COL != "domain":
         raise Exception(f"Group column {GROUP_COL} for dataset {DATASET} should always be 'domain'.")
-    """# only use top N classes to avoid label imbalance issues
-    # take top N from legal domain, because these are also in speeches; while overall top N are underrepresented in legal. (e.g. International Affairs only 41 times in lega, but 3k in speeches)
-    # top in legal: Law and Crime, Civil Rights, Domestic Commerce, Labor, Government Operations
-    # enables me to draw 1k balanced sample
-    top_n_classes = 5
-    label_text_top_n = [label_text for label_text in df[df["domain"] == "legal"].label_text.value_counts()[:top_n_classes].index]
-    print("classes used: ", label_text_top_n)
-    df_cl = df[df.label_text.isin(label_text_top_n)]"""
 elif "cap-sotu" in DATASET:
     df = pd.read_csv("./data-clean/df_cap_sotu_train.zip", engine="python")
     df_test = pd.read_csv("./data-clean/df_cap_sotu_test.zip", engine="python")
     df_cl = df.copy(deep=True)
-    """top_n_classes = 6
-    # removing other because its unclean
-    # Other, Macroeconomics, International Affairs, Defense, Health, Government Operations
-    label_text_top_n = [label_text for label_text in df.label_text.value_counts()[:top_n_classes].index if label_text != "Other"]
-    print("classes used: ", label_text_top_n)
-    df_cl = df[df.label_text.isin(label_text_top_n)]"""
 else:
     raise Exception(f"Dataset name not found: {DATASET}")
 
+
 ### preprocessing data
-
-## uk-leftright
-"""if "uk-leftright-econ" in DATASET:
-    # select to work with crowd annotations and expert annotations
-    df_cl = df_cl[df_cl.source == "Crowd"]
-    # select task on either economy or social policy
-    df_cl = df_cl[df_cl.scale == "Economic"]
-    # transform continuous float data to categorical classes
-    df_cl["label_scale"] = df_cl.score_sent_mean.fillna(0).round().astype(int)
-    print(df_cl["label_scale"].value_counts())
-    # prepare input data
-    df_cl["text_prepared"] = df_cl["text_preceding"].fillna('') + " " + df_cl["text_original"] + " " + df_cl["text_following"].fillna('')
-elif "uk-leftright-soc" in DATASET:
-    raise NotImplementedError
-
-if "uk-leftright" in DATASET:
-    ## simplify scale to three classes for label text
-    task_label_text_map = {0: "neutral", 1: "right", 2: "right", -1: "left", -2: "left"}
-    # could also test scale as 5 classes
-    #task_label_text_map = {0: "neutral", 1: "right", 2: "very_right", -1: "left", -2: "very_left"}
-    df_cl["label_text"] = df_cl.label_scale.map(task_label_text_map)
-    print(df_cl["label_text"].value_counts())
-    ## adapt numeric labels
-    task_label_text_map_factorized = {"neutral": 1, "right": 2, "right": 2, "left": 0, "left": 0}
-    #task_label_text_map_factorized = {"neutral": 2, "right": 3, "very_right": 4, "left": 1, "very_left": 0}
-    df_cl["labels"] = df_cl["label_text"].map(task_label_text_map_factorized)
-    print(df_cl["labels"].value_counts())"""
-
-"""if "pimpo-simple" in TASK:
-    task_label_text_map = {
-        'immigration_neutral': "neutral", 'integration_neutral': "neutral",
-        'immigration_sceptical': "sceptical", 'integration_sceptical': "sceptical",
-        'immigration_supportive': "supportive", 'integration_supportive': "supportive",
-        'no_topic': "no_topic"
-    }
-    df_cl["label_text"] = df_cl.label_text.map(task_label_text_map)
-    df_cl["labels"] = df_cl.label_text.factorize(sort=True)[0]"""
-
-"""elif "coronanet" in TASK:
-    df_cl.loc[:, "labels"] = df_cl.label_text.factorize(sort=True)[0]"""
-
-"""elif "cap" in TASK:
-    df_cl.loc[:, "labels"] = df_cl.label_text.factorize(sort=True)[0]"""
-
-
-"""if TASK == "integration":
-    #task_label_text = ["integration_supportive", "integration_sceptical", "integration_neutral", "no_topic"]
-    raise NotImplementedError
-elif TASK == "immigration":
-    #task_label_text = ["immigration_supportive", "immigration_sceptical", "immigration_neutral", "no_topic"]
-    raise NotImplementedError"""
-
 
 ## prepare input text data
 #if VECTORIZER == "tfidf":
@@ -299,15 +205,11 @@ if "pimpo" in DATASET:
     elif "standard" in METHOD:
         df_cl["text_prepared"] = df_cl["text_original_trans"]
         df_test["text_prepared"] = df_test["text_original_trans"]
-    # cannot use preceding+following to avoid data leakage from train to test
-    """if "nli" in METHOD:
-        df_cl["text_prepared"] = df_cl["text_preceding_trans"].fillna('') + '  | The quote: "' + df_cl["text_original_trans"] + '" End of quote |  ' + df_cl["text_following_trans"].fillna('')
-    elif "standard" in METHOD:
-        df_cl["text_prepared"] = df_cl["text_preceding_trans"].fillna('') + ' \n ' + df_cl["text_original_trans"] + ' \n ' + df_cl["text_following_trans"].fillna('')
-    elif METHOD == "generation":
-        df_cl["text_prepared"] = df_cl["text_preceding_trans"].fillna('') + '  | The quote: "' + df_cl["text_original_trans"] + '" End of quote |  ' + df_cl["text_following_trans"].fillna('')
-    elif "disc" in METHOD:
-        df_cl["text_prepared"] = df_cl["text_preceding_trans"].fillna('') + '  | The quote: "' + df_cl["text_original_trans"] + '" End of quote |  ' + df_cl["text_following_trans"].fillna('')"""
+    elif "classical_ml" in METHOD:
+        df_cl.loc[df_cl.domain == "speech", "text_prepared"] = df_cl["text_original"]
+        df_test.loc[df_test.domain == "speech", "text_prepared"] = df_test["text_original"]
+    else:
+        raise NotImplementedError
 elif "coronanet" in DATASET:
     df_cl["text_prepared"] = df_cl["text"]
     df_test["text_prepared"] = df_test["text"]
@@ -323,11 +225,11 @@ elif "cap-merge" in DATASET:
     elif "standard" in METHOD:
         df_cl.loc[df_cl.domain == "speech", "text_prepared"] = df_cap_sotu["text_original"]
         df_test.loc[df_test.domain == "speech", "text_prepared"] = df_cap_sotu_test["text_original"]
-    """# if any string in list of strings is in string
-    if any(substring in METHOD for substring in ["nli", "disc"]) or (METHOD == "generation"):
-        df_cl.loc[df_cl.domain == "speech", "text_prepared"] = df_cap_sotu["text_preceding"].fillna('') + '  | The quote: "' + df_cap_sotu["text_original"] + '" End of quote |  ' + df_cap_sotu["text_following"].fillna('')
-    elif "standard" in METHOD:
-        df_cl.loc[df_cl.domain == "speech", "text_prepared"] = df_cap_sotu["text_preceding"].fillna('') + ' \n ' + df_cap_sotu["text_original"] + ' \n ' + df_cap_sotu["text_following"].fillna('')"""
+    elif "classical_ml" in METHOD:
+        df_cl.loc[df_cl.domain == "speech", "text_prepared"] = df_cap_sotu["text_original"]
+        df_test.loc[df_test.domain == "speech", "text_prepared"] = df_cap_sotu_test["text_original"]
+    else:
+        raise NotImplementedError
 elif "cap-sotu" in DATASET:
     if any(substring in METHOD for substring in ["nli", "disc"]) or (METHOD == "generation"):
         df_cl.loc[:, "text_prepared"] = 'The quote: "' + df_cl["text_original"] + '"'
@@ -335,10 +237,11 @@ elif "cap-sotu" in DATASET:
     elif "standard" in METHOD:
         df_cl.loc[:, "text_prepared"] = df_cl["text_original"]
         df_test.loc[:, "text_prepared"] = df_test["text_original"]
-    """if any(substring in METHOD for substring in ["nli", "disc"]) or (METHOD == "generation"):
-        df_cl.loc[:, "text_prepared"] = df_cl["text_preceding"].fillna('') + '  | The quote: "' + df_cl["text_original"] + '" End of quote |  ' + df_cl["text_following"].fillna('')
-    elif "standard" in METHOD:
-        df_cl.loc[:, "text_prepared"] = df_cl["text_preceding"].fillna('') + ' \n ' + df_cl["text_original"] + ' \n ' + df_cl["text_following"].fillna('')"""
+    elif "classical_ml" in METHOD:
+        df_cl.loc[df_cl.domain == "speech", "text_prepared"] = df_cl["text_original"]
+        df_test.loc[df_test.domain == "speech", "text_prepared"] = df_test["text_original"]
+    else:
+        raise NotImplementedError
 else:
     raise Exception(f"Vectorizer {VECTORIZER} or METHOD {METHOD} not implemented.")
 
@@ -351,18 +254,9 @@ labels_num_via_text = pd.factorize(np.sort(df_cl.label_text.unique()))[0]  # lab
 assert all(labels_num_via_numeric == labels_num_via_text)
 
 
+
+
 ### select training data
-
-"""df_cl.groupby("parfam_text").apply(lambda x: x.label_text.value_counts())
-# parfam with > 100 for each class. CHR, LEF, LIB, NAT, SOC. (less: (ECO) SIP, ETH, CON, AGR)
-if "pimpo" in DATASET:
-    col_group_map = {}
-    col_group_map.update(**{parfam: "parfam_text" for parfam in df_cl.parfam_text.unique()})
-    col_group_map.update(**{country: "country_iso" for country in df_cl.country_iso.unique()})
-else:
-    raise NotImplementedError
-"""
-
 import random
 random.seed(SEED_RUN)
 
@@ -382,12 +276,7 @@ label_distribution_per_group_member = df_cl.groupby(GROUP_COL).apply(lambda x: x
 print("Overall label distribution per group member:\n", label_distribution_per_group_member)
 
 # sample training data
-#if "uk-leftright" in DATASET:
-#    df_train = df_cl.sample(n=SAMPLE_SIZE_TRAIN, random_state=SEED_RUN)
-#elif "pimpo" in DATASET:
-
 # unrealistic balanced sample without AL
-#if AL_ITERATIONS == 0:
 # redo sampling for different groups until get a fully balanced sample (or 20 iter)
 # balanced samples are important to remove data imbalanced as intervening variable for performance differences
 imbalanced_sample = True
@@ -407,7 +296,13 @@ while imbalanced_sample and (counter <= 10):
 
     # sample x% of training data for no topic, then share the remainder equally across classes
     n_sample_notopic = int(SAMPLE_SIZE_TRAIN * TRAIN_NOTOPIC_PROPORTION_TRAIN)
-    n_sample_perclass = int((SAMPLE_SIZE_TRAIN - n_sample_notopic) / (len(df_cl.label_text.unique()) - 1))
+    if "pimpo" in DATASET:
+        n_classes_for_sample = len(df_cl.label_text.unique()) - 1
+    else:
+        # !! TODO: for final reproducible run, remove the - 1 here. was mistake. Only kept it for comparability with previous runs
+        # otherwise training samples get too big. e.g. 125 instead of 100.
+        n_classes_for_sample = len(df_cl.label_text.unique()) - 1
+    n_sample_perclass = int((SAMPLE_SIZE_TRAIN - n_sample_notopic) / n_classes_for_sample)
     df_train_samp1 = df_cl_group.groupby("label_text", as_index=False, group_keys=False).apply(
         lambda x: x.sample(min(n_sample_perclass, len(x)), random_state=SEED_RUN) if x.label_text.unique()[0] != "no_topic" else None)
     if "pimpo" in DATASET:
@@ -441,16 +336,6 @@ print(f"\nFINAL DF_TRAIN SAMPLE (BALANCED) for group {group_join}:\ndf_train.lab
 
 
 
-"""
-# create df test
-if "randomall" in GROUP_SAMPLE:
-    df_test = df_cl[~df_cl.index.isin(df_train.index)]
-elif "random" in GROUP_SAMPLE:
-    df_test = df_cl[~df_cl.index.isin(df_train.index)]
-    # if df_train comes from specific group, remove this group from df_test
-    df_test = df_test[~df_test[GROUP_COL].astype(str).str.contains(group_join)].copy(deep=True)
-"""
-
 # remove N no_topic & downsample for faster testing
 #if "pimpo" in DATASET:
 if EXECUTION_TERMINAL == False:
@@ -462,6 +347,9 @@ if EXECUTION_TERMINAL == False:
     print("df_test.label_text.value_counts:\n", df_test.label_text.value_counts())
 
 
+
+
+##### code specific to Transformers
 
 ### format data if NLI or generation
 
@@ -496,6 +384,13 @@ elif "coronanet" in DATASET:
             "Restrictions of Mass Gatherings": "The quote is related to restrictions of mass gatherings",
             "Public Awareness Measures": "The quote is related to public awareness measures",
         }
+    elif (METHOD == "nli_void") or (METHOD == "disc_void"):
+        hypo_label_dic = {
+            "Health Resources": "The quote is about category A.",
+            "Restriction and Regulation of Businesses": "The quote is about category B.",
+            "Restrictions of Mass Gatherings": "The quote is about category C.",
+            "Public Awareness Measures": "The quote is about category D.",
+        }
     else:
         NotImplementedError
 elif "cap-merge" in DATASET:
@@ -510,6 +405,14 @@ elif "cap-merge" in DATASET:
             'Labor': "The quote is related to employment, or labour",
             "Law and Crime": "The quote is related to law, crime, or family issues",
         }
+    elif (METHOD == "nli_void") or (METHOD == "disc_void"):
+        hypo_label_dic = {
+            "Civil Rights": "The quote is about category A.",
+            "Domestic Commerce": "The quote is about category B.",
+            "Government Operations": "The quote is about category C.",
+            "Labor": "The quote is about category D.",
+            "Law and Crime": "The quote is about category E.",
+        }
     else:
         NotImplementedError
 elif "cap-sotu" in DATASET:
@@ -521,6 +424,14 @@ elif "cap-sotu" in DATASET:
             'Health': "The quote is related to health",
             'International Affairs': "The quote is related to international affairs, or foreign aid",
             "Macroeconomics": "The quote is related to macroeconomics",
+        }
+    elif (METHOD == "nli_void") or (METHOD == "disc_void"):
+        hypo_label_dic = {
+            "Defense": "The quote is about category A.",
+            "Government Operations": "The quote is about category B.",
+            "Health": "The quote is about category C.",
+            "International Affairs": "The quote is about category D.",
+            "Macroeconomics": "The quote is about category E.",
         }
     else:
         NotImplementedError
@@ -611,13 +522,13 @@ if METHOD == "standard_dl":
     HYPER_PARAMS = {'lr_scheduler_type': 'constant', 'learning_rate': 2e-5, 'num_train_epochs': n_epochs, 'seed': SEED_RUN, 'per_device_train_batch_size': 32 if MODEL_SIZE == "base" else 16, 'warmup_ratio': 0.06, 'weight_decay': 0.01, 'per_device_eval_batch_size': 200 if MODEL_SIZE == "base" else 80,
                     "evaluation_strategy": "no", "save_strategy": "no"}  # "do_eval": False
 elif METHOD == "nli_void":
-    HYPER_PARAMS = {'lr_scheduler_type': 'linear', 'learning_rate': 2e-5, 'num_train_epochs': 15, 'seed': SEED_RUN, 'per_device_train_batch_size': 32 if MODEL_SIZE == "base" else 16, 'warmup_ratio': 0.40, 'weight_decay': 0.01, 'per_device_eval_batch_size': 200 if MODEL_SIZE == "base" else 80,
+    HYPER_PARAMS = {'lr_scheduler_type': 'linear', 'learning_rate': 2e-5, 'num_train_epochs': 15, 'seed': SEED_RUN, 'per_device_train_batch_size': 32 if MODEL_SIZE == "base" else 16, 'warmup_ratio': 0.20, 'weight_decay': 0.01, 'per_device_eval_batch_size': 200 if MODEL_SIZE == "base" else 80,
                     "evaluation_strategy": "no", "save_strategy": "no"}  # "do_eval": False
 elif "nli" in METHOD:
     HYPER_PARAMS = {'lr_scheduler_type': 'linear', 'learning_rate': 2e-5, 'num_train_epochs': 7, 'seed': SEED_RUN, 'per_device_train_batch_size': 32 if MODEL_SIZE == "base" else 16, 'warmup_ratio': 0.20, 'weight_decay': 0.01, 'per_device_eval_batch_size': 200 if MODEL_SIZE == "base" else 80,
                     "evaluation_strategy": "no", "save_strategy": "no"}  # "do_eval": False
 elif "disc" in METHOD:
-    HYPER_PARAMS = {'lr_scheduler_type': 'linear', 'learning_rate': 2e-5, 'num_train_epochs': 7, 'seed': SEED_RUN, 'per_device_train_batch_size': 32 if MODEL_SIZE == "base" else 16, 'warmup_ratio': 0.20, 'weight_decay': 0.01, 'per_device_eval_batch_size': 200 if MODEL_SIZE == "base" else 80,
+    HYPER_PARAMS = {'lr_scheduler_type': 'linear', 'learning_rate': 2e-5, 'num_train_epochs': 15, 'seed': SEED_RUN, 'per_device_train_batch_size': 32 if MODEL_SIZE == "base" else 16, 'warmup_ratio': 0.20, 'weight_decay': 0.01, 'per_device_eval_batch_size': 200 if MODEL_SIZE == "base" else 80,
                     "evaluation_strategy": "no", "save_strategy": "no"}  # "do_eval": False, "logging_steps": 1,
 elif "generation" in METHOD:
     HYPER_PARAMS = {
@@ -632,15 +543,8 @@ elif "generation" in METHOD:
 else:
     raise Exception("Method not implemented for hps")
 
-#TODO: adapt lr for model sizes
-# e.g. deberta-v3-large should have 9e-6 based on paper https://arxiv.org/pdf/2111.09543.pdf
 
 
-
-
-
-
-## break where non-active learning code starts
 
 # format data
 if METHOD in ["standard_dl", "dl_embed", "classical_ml"]:
@@ -710,8 +614,7 @@ trainer = create_trainer(model=model, tokenizer=tokenizer, encoded_dataset=datas
 # train
 start_time_train = time.time()
 
-if not "ul2" in MODEL_NAME:
-    trainer.train()
+trainer.train()
 
 end_time_train = time.time()
 train_time = end_time_train - start_time_train
@@ -778,11 +681,6 @@ if SAVE_OUTPUTS:
     # Use 'wb' to write binary data
     with gzip.open(filename, 'wb') as f:
         pickle.dump(data_dic, f)
-
-"""
-with gzip.open(filename, 'rb') as f:
-    data_dic_loaded = pickle.load(f)
-"""
 
 
 
