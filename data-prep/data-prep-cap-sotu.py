@@ -1,10 +1,8 @@
-
 ### This scripts downloads and cleans the data for the CAP- SotU dataset
 
 # load packages
 import pandas as pd
 import numpy as np
-import os
 
 SEED_GLOBAL = 42
 np.random.seed(SEED_GLOBAL)
@@ -16,17 +14,10 @@ np.random.seed(SEED_GLOBAL)
 # overview of CAP data: https://www.comparativeagendas.net/datasets_codebooks
 # overall CAP master codebook: https://www.comparativeagendas.net/pages/master-codebook
 # SOTU codebook 2015: https://comparativeagendas.s3.amazonaws.com/codebookfiles/State_of_the_Union_Address_Codebook.pdf
-
-#df = pd.read_csv("https://comparativeagendas.s3.amazonaws.com/datasetfiles/US-Executive_State_of_the_Union_Speeches-22.csv")
 df = pd.read_csv("https://comparativeagendas.s3.amazonaws.com/datasetfiles/US-Exec_SOTU_2023.csv")
 
 print(df.columns)
 print(len(df))
-
-
-
-#### Data Cleaning
-
 
 ## data cleaning
 # contains two types of CAP topics
@@ -44,12 +35,12 @@ print(len(df_cl))
 df_cl = df_cl[~df_cl.description.str.len().ge(1000)]  # remove very long descriptions, assuming that they contain too much noise from other types and unrelated language. 1000 characters removes around 9k
 print(len(df_cl))
 # are there unique texts which are annotated with more than one type? Yes, 105. String like " ", ".", "Thank you very much", "#NAME?", "It's the right thing to do."
-#df_cl = df_cl.groupby(by="description").filter(lambda x: len(x.value_counts("majortopic")) == 1)
-#print(len(df_cl))
+df_cl = df_cl.groupby(by="description").filter(lambda x: len(x.value_counts("majortopic")) == 1)
+print(len(df_cl))
 # remove duplicates
-# maintain duplicates to maintain sequentiality of texts
-#df_cl = df_cl[~df_cl.description.duplicated(keep="first")]  # 170 duplicates
-#print(len(df_cl))
+# could maintain duplicates to maintain sequentiality of texts
+df_cl = df_cl[~df_cl.description.duplicated(keep="first")]  # 170 duplicates
+print(len(df_cl))
 
 # renumber "Other" cateogry label from -555 to 99
 df_cl.majortopic = df_cl.majortopic.replace(-555, 99)
@@ -115,10 +106,9 @@ print(np.sort(df_cl["label_cap2_text"].value_counts().tolist()) == np.sort(df_cl
 df_cl.label_cap2_text.value_counts()
 
 
-
-### augmenting text column
-
-## new column where every sentence is merged with previous sentence
+## augmenting text column
+# new column where every sentence is merged with previous sentence
+# not using this in the analysis though
 n_unique_doc_lst = []
 n_unique_doc = 0
 text_preceding = []
@@ -158,7 +148,7 @@ df_cl_merged.to_csv(f"./data-clean/df_cap_sotu_for_merge.zip",
 
 
 ## sample only top N classes
-top_n_classes = 6
+top_n_classes = 6  # effectively 5, because removing "other"
 # removing other because its unclean
 # Other, Macroeconomics, International Affairs, Defense, Health, Government Operations
 label_text_top_n = [label_text for label_text in df_cl.label_text.value_counts()[:top_n_classes].index if label_text != "Other"]
@@ -172,12 +162,8 @@ df_cl.loc[:, "pres_party"] = df_cl.loc[:, "pres_party"].replace({100: "dem", 200
 ## train-test split
 from sklearn.model_selection import train_test_split
 
-#TODO: remember that with this train-test split I cannot use preceding+following sentences, otherwise leakage
+# important: with this train-test split I cannot use preceding+following sentences, otherwise leakage
 df_train, df_test = train_test_split(df_cl, test_size=0.2, random_state=42, stratify=df_cl["label_text"])
-
-
-# down sample test set
-# no need to downsample, already only 2314 texts
 
 
 # save to disk
@@ -191,38 +177,12 @@ df_test.to_csv(f"./data-clean/df_cap_sotu_test.zip",
 
 
 ## check per group distribution
-label_distribution_per_group_member = df_train.groupby("pres_party").apply(lambda x: x.label_text.value_counts())
-label_distribution_per_group_member = df_train.groupby("phase").apply(lambda x: x.label_text.value_counts())
-print("Overall label distribution per group member:\n", label_distribution_per_group_member)
+label_distribution_per_group_member_presparty = df_train.groupby("pres_party").apply(lambda x: x.label_text.value_counts())
+label_distribution_per_group_member_phase = df_train.groupby("phase").apply(lambda x: x.label_text.value_counts())
+print("Overall label distribution per group member:\n", label_distribution_per_group_member_presparty)
+print("Overall label distribution per group member:\n", label_distribution_per_group_member_phase)
 print("Overall label distribution:\n", df_train.label_text.value_counts())
 
-
-
-
-#### Train-Test-Split
-"""
-### simplified dataset
-# sample based on docs - to make test set composed of entirely different docs - avoid data leakage when including surrounding sentences
-doc_id_train = pd.Series(df_cl.doc_id.unique()).sample(frac=0.80, random_state=SEED_GLOBAL).tolist()
-doc_id_test = df_cl[~df_cl.doc_id.isin(doc_id_train)].doc_id.unique().tolist()
-print(len(doc_id_train))
-print(len(doc_id_test))
-assert sum([doc_id in doc_id_train for doc_id in doc_id_test]) == 0, "should be 0 if doc_id_train and doc_id_test don't overlap"
-df_train = df_cl[df_cl.doc_id.isin(doc_id_train)]
-df_test = df_cl[~df_cl.doc_id.isin(doc_id_train)]
-
-# ## Save data
-
-# dataset statistics
-text_length = [len(text) for text in df_cl.text_original]
-text_context_length = [len(text) + len(preceding) + len(following) for text, preceding, following in zip(df_cl.text_original, df_cl.text_preceding, df_cl.text_following)]
-print("Average number of characters in text: ", int(np.mean(text_length)))
-print("Average number of characters in text with context: ", int(np.mean(text_context_length)))
-
-print(os.getcwd())
-
-df_cl.to_csv("./data_clean/df_cap_sotu_all.csv")
-df_train.to_csv("./data_clean/df_cap_sotu_train.csv")
-df_test.to_csv("./data_clean/df_cap_sotu_test.csv")
-
-"""
+# number of members per group
+len(df_cl["pres_party"].unique())
+df_cl.label_text.unique()

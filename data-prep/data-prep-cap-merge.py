@@ -1,7 +1,14 @@
+### This scripts combines and cleans the data from the CAP-US-Court and CAP-SotU datasets
 
-
+# load packages
 import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
 
+SEED_GLOBAL = 42
+np.random.seed(SEED_GLOBAL)
+
+# load data
 df_court = pd.read_csv(f"./data-clean/df_cap_court_all.zip")
 df_sotu = pd.read_csv(f"./data-clean/df_cap_sotu_for_merge.zip")
 
@@ -22,7 +29,6 @@ df_concat = df_concat[~df_concat.label_text.isin(label_text_not_common)]
 # make sure that numeric labels are aligned with factorized labels
 df_concat["labels"] = pd.factorize(df_concat["label_text"], sort=True)[0]
 
-
 # only use top N classes to avoid label imbalance issues
 # take top N from legal domain, because these are also in speeches; while overall top N are underrepresented in legal. (e.g. International Affairs only 41 times in lega, but 3k in speeches)
 # top in legal: Law and Crime, Civil Rights, Domestic Commerce, Labor, Government Operations
@@ -35,10 +41,8 @@ df_concat.loc[:, "labels"] = df_concat.label_text.factorize(sort=True)[0]
 
 
 ## train-test split
-from sklearn.model_selection import train_test_split
-
-#TODO: remember that with this train-test split I cannot use preceding+following sentences, otherwise leakage
-df_train, df_test = train_test_split(df_concat, test_size=0.2, random_state=42, stratify=df_concat["label_text"])
+# important: with this train-test split I cannot use preceding+following sentences, otherwise leakage
+df_train, df_test = train_test_split(df_concat, test_size=0.2, random_state=SEED_GLOBAL, stratify=df_concat["label_text"])
 
 # down sample test set
 # no need to downsample, already only 1928 texts
@@ -52,10 +56,9 @@ df_test.to_csv(f"./data-clean/df_cap_merge_test.zip",
                 compression={"method": "zip", "archive_name": f"df_cap_merge_test.csv"}, index=False)
 
 
-
-
-
 ## check per group distribution
 label_distribution_per_group_member = df_concat.groupby("domain").apply(lambda x: x.label_text.value_counts())
 print("Overall label distribution per group member:\n", label_distribution_per_group_member)
 print("Overall label distribution:\n", df_concat.label_text.value_counts())
+
+df_concat.label_text.unique()

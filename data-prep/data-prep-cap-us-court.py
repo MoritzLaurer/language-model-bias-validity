@@ -4,31 +4,21 @@
 # load packages
 import pandas as pd
 import numpy as np
-import os
-
 
 SEED_GLOBAL = 42
 np.random.seed(SEED_GLOBAL)
 
 
-# ## Load & prepare data
+### Load & prepare data
 
-#set working directory for local runs
-"""print(os.getcwd())
-os.chdir("./NLI-experiments")
-print(os.getcwd())
-"""
-
-## raw load data
+# raw load data
 # codebook: https://comparativeagendas.s3.amazonaws.com/codebookfiles/Supreme_Court_Codebook.pdf
 df = pd.read_csv("https://comparativeagendas.s3.amazonaws.com/datasetfiles/US-Judicial-supreme_court_cases_20.1.csv", sep=",", encoding='utf-8') #encoding='utf-8',  # low_memory=False  #lineterminator='\t',
 print(df.columns)
 print(len(df))
 
 
-#### Data Cleaning
-
-### data cleaning
+## Data Cleaning
 
 df_cl = df[['summary', 'ruling', #'type', 'id',
             #'filter_vac', 'filter_dis', 'filter_gd',  # vacated, dismissed, granted/denied
@@ -42,7 +32,6 @@ print(len(df_cl), " - original length")
 # marginal different between pap_majortopic and majortopic - going with pap_majortopic, because majortopic has only 2 texts in category 23, while pap_ has them in category 6
 # ! in CAP-sotu it made more sense to use majortopic
 # pd.DataFrame([df_cl.pap_majortopic.value_counts(), df_cl.majortopic.value_counts()])
-
 # Summary seems to be main basis for coding: "A comprehensive description or summary of the case was acquired in order to code each case according to the Policy Agendas Project coding scheme" ... "For the purposes of public policy research, we felt the “Summary” section would suffice. "
 # not entirely clear if "ruling" text was also used. "in most instances, this data was found in the second paragraph of the “Summary” or in the more detailed “Opinion” sections for a given case in LexisNexis. For the purposes of public policy research, the ruling paragraph of the “Summary” section is often sufficient."
 # => seems like coders mostly looked at summary, but might also have looked at more from the NexiLexis (or other) website
@@ -143,35 +132,3 @@ df_cl.to_csv(
        index=False
 )
 
-
-#### Train-Test-Split
-"""
-### simplified dataset
-from sklearn.model_selection import train_test_split
-
-df_train, df_test = train_test_split(df_cl, test_size=0.3, random_state=SEED_GLOBAL, stratify=df_cl["label_text"])
-
-# sample for faster testing - full data at the very end
-samp_per_class_max = 100
-df_test_samp = df_test.groupby(by="label_text", group_keys=False, as_index=False, sort=False).apply(lambda x: x.sample(n=min(len(x), samp_per_class_max), random_state=SEED_GLOBAL))
-
-print(f"Overall train size: {len(df_train)}")
-print(f"Overall test size: {len(df_test)} - sampled test size: {len(df_test_samp)}")
-df_train_test_distribution = pd.DataFrame([df_train.label_text.value_counts().rename("train"), df_test.label_text.value_counts().rename("test"), 
-                                           df_test_samp.label_text.value_counts().rename("test_sample"), df_cl.label_text.value_counts().rename("all")]).transpose()
-df_train_test_distribution
-
-
-### Save data
-
-# dataset statistics
-text_length = [len(text) for text in df_cl.text]
-print("Average number of characters in text: ", int(np.mean(text_length)), "\n")
-
-print(os.getcwd())
-
-df_cl.to_csv("./data_clean/df_cap_us_court_all.csv")
-df_train.to_csv("./data_clean/df_cap_us_court_train.csv")
-df_test.to_csv("./data_clean/df_cap_us_court_test.csv")
-
-"""

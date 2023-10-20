@@ -1,16 +1,19 @@
+### This scripts downloads and cleans the data for the PimPo dataset
 
-
+# load packages
 import pandas as pd
-import spacy
+import numpy as np
+from sklearn.model_selection import train_test_split
 
-### !!! not sure if necessary, because already done well in file for multilingual paper
-## ! just saving samller file with less columns for now
+SEED_GLOBAL = 42
+np.random.seed(SEED_GLOBAL)
+
 
 ## load already translated data
-#df = pd.read_csv(f"/Users/moritzlaurer/Dropbox/PhD/Papers/multilingual/multilingual-repo/data-clean/df_pimpo_samp_trans_m2m_100_1.2B_embed_tfidf.zip", engine='python')
-df = pd.read_csv(f"/Users/moritzlaurer/Dropbox/PhD/Papers/multilingual/multilingual-repo/data-clean/df_pimpo_samp_trans_m2m_100_1.2B.zip", engine='python')
+df = pd.read_csv(f"./data-raw/df_pimpo_samp_trans_m2m_100_1.2B.zip", engine='python')
 
-## add left/right aggreg parfam to df
+## prepare data
+# add metadata
 parfam_aggreg_map = {"ECO": "left", "LEF": "left", "SOC": "left",
                      "CHR": "right", "CON": "right", "NAT": "right",
                      "LIB": "other", "AGR": "other", "ETH": "other", "SIP": "other"}
@@ -31,8 +34,8 @@ df_cl = df[['label', 'label_text', 'country_iso', 'language_iso', 'doc_id',
            #'text_trans_concat_tfidf', #'text_prepared'
             ]]
 
+# harmonization of colum names
 df_cl = df_cl.rename(columns={"label": "labels"})
-
 
 ## merge labels to simpler task
 task_label_text_map = {
@@ -46,18 +49,13 @@ df_cl["labels"] = df_cl.label_text.factorize(sort=True)[0]
 
 
 ## train-test split
-from sklearn.model_selection import train_test_split
-
-#TODO: remember that with this train-test split I cannot use preceding+following sentences, otherwise leakage
-df_train, df_test = train_test_split(df_cl, test_size=0.2, random_state=42, stratify=df_cl["label_text"])
-
+# important: with this train-test split I cannot use preceding+following sentences, otherwise leakage
+df_train, df_test = train_test_split(df_cl, test_size=0.2, random_state=SEED_GLOBAL, stratify=df_cl["label_text"])
 
 # reduce no-topic to N
 sample_no_topic = 5000
 df_test = df_test.groupby(by="label_text", as_index=False, group_keys=False).apply(
-    lambda x: x.sample(n=min(sample_no_topic, len(x)), random_state=42) if x.label_text.iloc[0] == "no_topic" else x)
-# reduce entire test-set to N
-#df_test = df_test.sample(n=min(SAMPLE_SIZE_TEST, len(df_test)), random_state=42)
+    lambda x: x.sample(n=min(sample_no_topic, len(x)), random_state=SEED_GLOBAL) if x.label_text.iloc[0] == "no_topic" else x)
 print("df_test.label_text.value_counts:\n", df_test.label_text.value_counts())
 
 
