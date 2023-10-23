@@ -1,15 +1,15 @@
 
-## prep data
 import pandas as pd
 import os
 import pickle
 import gzip
 
+
+## Load data: loop over all files in the directory
 dataset_lst = ["pimpo", "coronanet", "cap-merge", "cap-sotu"]
 directory = "./results/"
 
 data_dic_lst = []
-# Loop over all files in the directory
 for dataset in dataset_lst:
     directory_dataset = directory+dataset
     for filename in os.listdir(directory_dataset):
@@ -23,6 +23,7 @@ for dataset in dataset_lst:
                 data_dic_lst.append(pickle.load(f))
 
 
+## convert all experiment result data into one dataframe
 data_dic_results_lst = []
 for data_dic in data_dic_lst:
     experiment_metadata_to_keep = [
@@ -35,13 +36,15 @@ for data_dic in data_dic_lst:
 
 df_results = pd.DataFrame(data_dic_results_lst)
 
+
+## some cleaning
 df_results.drop(columns=[
     'eval_accuracy_not_b', 'eval_precision_macro', 'eval_recall_macro', 'eval_precision_micro', 'eval_recall_micro',
     'eval_loss', 'eval_runtime', 'eval_samples_per_second', 'eval_steps_per_second', 'epoch',
     "seed_run", "n_run", "train_time"
     ], inplace=True)
 
-# additional cleaning
+# renaming some values / columns for paper
 method_map = {
     "classical_ml": "logistic reg.", "standard_dl": "BERT-base", "nli_short": "BERT-NLI"
 }
@@ -68,11 +71,11 @@ else:
 
 # remove nli_void for now
 df_results = df_results[df_results["method"] != "nli_void"]
+# removing experiments with 100 data train because too instable and unrealistic
 df_results = df_results[df_results["sample_size_train"] == 500]
 
 
-
-# differentiate between "sample_size_train" ?
+## calculate means and standard deviations
 df_results_mean = df_results.groupby(["group_sample_strategy"] + variables_to_group_by).mean().reset_index()
 
 # add standard deviation for error bar
@@ -106,12 +109,11 @@ df_merged = df_merged.sort_values(variables_to_group_by)  #(["dataset", "group",
 
 
 
-
-## viz
+### viz
 import matplotlib.pyplot as plt
 import numpy as np
 
-# Sample data
+# create strings for y-axis labels. maybe improve later.
 if AGGREGATE_METHOD_ONLY:
     categories = df_merged.method.astype(str) #+ " - " + df_merged.group + " - " + df_merged.dataset
 else:
@@ -132,7 +134,6 @@ plt.style.use('seaborn-whitegrid')  # Use seaborn's whitegrid style
 # Plot
 #plt.errorbar(df_merged.eval_f1_macro_random1, y_positions, xerr=df_merged.eval_f1_macro_std_random1, fmt='o', color='r', label='random 1')
 #plt.errorbar(df_merged.eval_f1_macro_randomall, y_positions, xerr=df_merged.eval_f1_macro_std_randomall, fmt='o', color='b', label='random all')
-
 if not AGGREGATE_METHOD_ONLY:
     # Get the errorbar object for 'random 1'
     line1, caplines1, barlinecols1 = plt.errorbar(df_merged.eval_f1_macro_random1, y_positions, xerr=df_merged.eval_f1_macro_std_random1, fmt='o', color='r', label='data_train biased')
@@ -179,9 +180,6 @@ plt.grid(True, which='both', linestyle='--', linewidth=0.5)
 # Layout adjustment for better appearance
 plt.tight_layout()
 plt.show()
-
-
-
 
 
 
