@@ -1,0 +1,86 @@
+Terminal execution:  True   (sys.argv[0]:  analysis-classical-run.py )
+Arguments passed via the terminal:
+
+cap-merge    dataset
+500    sample_size_train
+None    sample_size_corpus
+20000    sample_size_no_topic
+6000    sample_size_test
+classical_ml    method
+log_reg    model
+tfidf    vectorizer
+20231016    study_date
+cap-merge    task
+2    n_run
+2    n_random_runs_total
+random1    group_sample
+True    save_outputs
+domain    group_column
+448    max_length
+Iteration number:  1
+All random seeds:  [102 435]
+Random seed for this run:  435
+log_reg
+Overall label distribution per group member:
+ domain                       
+legal   Law and Crime            1950
+        Civil Rights              913
+        Domestic Commerce         786
+        Labor                     580
+        Government Operations     447
+speech  Government Operations     887
+        Law and Crime             698
+        Labor                     679
+        Civil Rights              466
+        Domestic Commerce         305
+Name: label_text, dtype: int64
+Group selected: ['legal']  for seed 435
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Civil Rights             125
+Domestic Commerce        125
+Government Operations    125
+Labor                    125
+Law and Crime            125
+Name: label_text, dtype: int64
+
+FINAL DF_TRAIN SAMPLE (BALANCED) for group \blegal\b:
+df_train.label_text.value_counts:
+ Civil Rights             125
+Domestic Commerce        125
+Government Operations    125
+Labor                    125
+Law and Crime            125
+Name: label_text, dtype: int64
+Traceback (most recent call last):
+  File "/Users/moritzlaurer/Dropbox/PhD/Papers/meta-metrics/meta-metrics-repo/analysis-classical-run.py", line 359, in <module>
+    df_train["text_prepared"] = lemmatize_and_stopwordremoval(df_train.text_original)
+  File "/Users/moritzlaurer/Dropbox/PhD/Papers/meta-metrics/meta-metrics-repo/analysis-classical-run.py", line 347, in lemmatize_and_stopwordremoval
+    for doc in nlp.pipe(text_lst, n_process=1, disable=["ner"]):  # disable=["tok2vec", "ner"] "tagger", "attribute_ruler", "parser",
+  File "/Users/moritzlaurer/Dropbox/PhD/Papers/meta-metrics/meta-metrics-repo/venv/bin/lib/python3.10/site-packages/spacy/language.py", line 1574, in pipe
+    for doc in docs:
+  File "/Users/moritzlaurer/Dropbox/PhD/Papers/meta-metrics/meta-metrics-repo/venv/bin/lib/python3.10/site-packages/spacy/util.py", line 1653, in _pipe
+    yield from proc.pipe(docs, **kwargs)
+  File "spacy/pipeline/pipe.pyx", line 53, in pipe
+  File "/Users/moritzlaurer/Dropbox/PhD/Papers/meta-metrics/meta-metrics-repo/venv/bin/lib/python3.10/site-packages/spacy/util.py", line 1653, in _pipe
+    yield from proc.pipe(docs, **kwargs)
+  File "spacy/pipeline/pipe.pyx", line 53, in pipe
+  File "/Users/moritzlaurer/Dropbox/PhD/Papers/meta-metrics/meta-metrics-repo/venv/bin/lib/python3.10/site-packages/spacy/util.py", line 1653, in _pipe
+    yield from proc.pipe(docs, **kwargs)
+  File "spacy/pipeline/transition_parser.pyx", line 233, in pipe
+  File "/Users/moritzlaurer/Dropbox/PhD/Papers/meta-metrics/meta-metrics-repo/venv/bin/lib/python3.10/site-packages/spacy/util.py", line 1600, in minibatch
+    batch = list(itertools.islice(items, int(batch_size)))
+  File "/Users/moritzlaurer/Dropbox/PhD/Papers/meta-metrics/meta-metrics-repo/venv/bin/lib/python3.10/site-packages/spacy/util.py", line 1653, in _pipe
+    yield from proc.pipe(docs, **kwargs)
+  File "spacy/pipeline/trainable_pipe.pyx", line 73, in pipe
+  File "/Users/moritzlaurer/Dropbox/PhD/Papers/meta-metrics/meta-metrics-repo/venv/bin/lib/python3.10/site-packages/spacy/util.py", line 1600, in minibatch
+    batch = list(itertools.islice(items, int(batch_size)))
+  File "/Users/moritzlaurer/Dropbox/PhD/Papers/meta-metrics/meta-metrics-repo/venv/bin/lib/python3.10/site-packages/spacy/util.py", line 1653, in _pipe
+    yield from proc.pipe(docs, **kwargs)
+  File "spacy/pipeline/trainable_pipe.pyx", line 73, in pipe
+  File "/Users/moritzlaurer/Dropbox/PhD/Papers/meta-metrics/meta-metrics-repo/venv/bin/lib/python3.10/site-packages/spacy/util.py", line 1600, in minibatch
+    batch = list(itertools.islice(items, int(batch_size)))
+  File "/Users/moritzlaurer/Dropbox/PhD/Papers/meta-metrics/meta-metrics-repo/venv/bin/lib/python3.10/site-packages/spacy/language.py", line 1571, in <genexpr>
+    docs = (self._ensure_doc(text) for text in texts)
+  File "/Users/moritzlaurer/Dropbox/PhD/Papers/meta-metrics/meta-metrics-repo/venv/bin/lib/python3.10/site-packages/spacy/language.py", line 1093, in _ensure_doc
+    raise ValueError(Errors.E1041.format(type=type(doc_like)))
+ValueError: [E1041] Expected a string, Doc, or bytes as input, but got: <class 'float'>
