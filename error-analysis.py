@@ -1,15 +1,19 @@
 
 
+from scipy.stats import pearsonr, chi2_contingency
+import statsmodels.api as sm
+import numpy as np
 import pandas as pd
 import os
 import pickle
 import gzip
 
+
 dataset_lst = ["pimpo", "coronanet", "cap-merge", "cap-sotu"]
 directory = "./results/"
 
 data_dic_lst = []
-# Loop over all files in the directory
+# Load data: loop over all files in the directory
 for dataset in dataset_lst:
     directory_dataset = directory+dataset
     for filename in os.listdir(directory_dataset):
@@ -24,25 +28,26 @@ for dataset in dataset_lst:
 
 
 
-## error correlation analysis tests
-from scipy.stats import pearsonr, chi2_contingency
-import statsmodels.api as sm
-import matplotlib.pyplot as plt
-import numpy as np
-
-
+## statistical error analysis tests
+# currently running separate statistical tests on each run.
+# one run (= one dictionary) are the results from one model trained on one group tested on the held-out testset.
 error_dic_lst = []
 for data_dic in data_dic_lst:
+
+    # extract test data with predictions for specific run
     df_test = data_dic["df_test_results"]
     df_test["error"] = df_test["label_pred"] != df_test["label_gold_pred_aligned"]
     df_test['error_int'] = df_test['error'].astype(int)
 
+    # extract some metadata information on the specific run
     experiment_metadata_to_keep = [
         'dataset', 'group_sample_strategy', 'group_col', 'method', 'model_name', 'sample_size_train',
         'group_members', 'seed_run', 'n_run', 'date', 'train_time', 'model_size', 'task'
     ]
     experiment_metadata = {key: value for key, value in data_dic["experiment_metadata"].items() if key in experiment_metadata_to_keep}
 
+    # extract the group and specific group-member the respective model was trained on
+    # if the specific run was on unbiased/random data, group_member == "randomall".
     group_col = data_dic["experiment_metadata"]["group_col"]
     group_member = str(data_dic["experiment_metadata"]["group_members"])
 
@@ -52,16 +57,12 @@ for data_dic in data_dic_lst:
 
     # logistic regression
     # one-hot encoding for group_member used for sampling/biasing
+    # "randomall" are the scenarios where the training data is fully random and not biased
     if group_member != "randomall":
-        #try:
             onehot_group_member = [1 if str(x) == group_member else 0 for x in df_test[group_col]]
             model = sm.Logit(df_test['error_int'], sm.add_constant(onehot_group_member)).fit()
             coefficients = model.params["x1"]
             p_values = model.pvalues["x1"]
-        #except Exception as e:
-        #    print(f"\n\nIssue with {group_col} {group_member}. Error:\n{e}\n\n")
-        #    raise e
-        #    continue
     else:
         coefficients = np.nan
         p_values = np.nan
@@ -73,6 +74,7 @@ df_errors = pd.DataFrame(error_dic_lst)
 
 
 ## some cleaning / post-proccessing
+# for better wording / formatting in paper
 method_map = {
     "classical_ml": "logistic reg.", "standard_dl": "BERT-base", "nli_short": "BERT-NLI"
 }
@@ -98,10 +100,10 @@ df_errors.loc[:,'dataset'] = pd.Categorical(
     df_errors['dataset'], categories=['PImPo', 'CoronaNet', 'CAP-SotU', 'CAP-SotU+Court'], ordered=True
 )
 
-# remove nli_void for now
+# remove nli_void/meaningless for now
 df_errors = df_errors[df_errors["method"] != "nli_void"]
 
-# remove randomall, because regression not properly possible and already doing randomall vs. biased comparison in absolute f1 macro analysis
+# remove randomall, because regression not properly possible on randomall and already doing randomall vs. biased comparison in absolute f1 macro analysis
 df_errors = df_errors[df_errors["group_sample_strategy"] != "randomall"]
 
 
@@ -124,7 +126,6 @@ df_errors_grouped_aggreg["chi2"] = df_errors_grouped_aggreg["chi2"].round(1)
 
 print(df_errors_grouped)
 print(df_errors_grouped_aggreg)
-
 
 
 
