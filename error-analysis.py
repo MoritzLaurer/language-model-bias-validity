@@ -106,6 +106,9 @@ df_errors = df_errors[df_errors["method"] != "nli_void"]
 # remove randomall, because regression not properly possible on randomall and already doing randomall vs. biased comparison in absolute f1 macro analysis
 df_errors = df_errors[df_errors["group_sample_strategy"] != "randomall"]
 
+# removing experiments with 100 data train because too instable and unrealistic
+df_errors = df_errors[df_errors["sample_size_train"] == 500]
+
 
 ## results disaggregated
 # inspect results
@@ -130,7 +133,7 @@ print(df_errors_grouped_aggreg)
 
 
 # save to disk
-save_to_disk = True
+save_to_disk = False
 if save_to_disk:
     df_errors_grouped.to_excel("./viz/error-analysis-disaggreg.xlsx", index=False)
     df_errors_grouped_aggreg.to_excel("./viz/error-analysis-aggreg.xlsx", index=False)
