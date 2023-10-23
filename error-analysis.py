@@ -71,7 +71,8 @@ for data_dic in data_dic_lst:
 
 df_errors = pd.DataFrame(error_dic_lst)
 
-# additional cleaning
+
+## some cleaning / post-proccessing
 method_map = {
     "classical_ml": "logistic reg.", "standard_dl": "BERT-base", "nli_short": "BERT-NLI"
 }
