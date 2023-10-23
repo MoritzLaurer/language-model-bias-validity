@@ -5,6 +5,10 @@ import pickle
 import gzip
 
 
+# choose classification metric for figure
+METRIC = "f1_macro"  # "f1_macro", "f1_micro", "accuracy_balanced"
+
+
 ## Load data: loop over all files in the directory
 dataset_lst = ["pimpo", "coronanet", "cap-merge", "cap-sotu"]
 directory = "./results/"
@@ -136,29 +140,29 @@ plt.style.use('seaborn-whitegrid')  # Use seaborn's whitegrid style
 #plt.errorbar(df_merged.eval_f1_macro_randomall, y_positions, xerr=df_merged.eval_f1_macro_std_randomall, fmt='o', color='b', label='random all')
 if not AGGREGATE_METHOD_ONLY:
     # Get the errorbar object for 'random 1'
-    line1, caplines1, barlinecols1 = plt.errorbar(df_merged.eval_f1_macro_random1, y_positions, xerr=df_merged.eval_f1_macro_std_random1, fmt='o', color='r', label='data_train biased')
+    line1, caplines1, barlinecols1 = plt.errorbar(df_merged[f"eval_{METRIC}_random1"], y_positions, xerr=df_merged[f"eval_{METRIC}_std_random1"], fmt='o', color='r', label='data_train biased')
     # Make the error bar for 'random 1' dotted
     for bar in barlinecols1:
         bar.set_linestyle('--')
     # Get the errorbar object for 'random all'
-    line2, caplines2, barlinecols2 = plt.errorbar(df_merged.eval_f1_macro_randomall, y_positions, xerr=df_merged.eval_f1_macro_std_randomall, fmt='o', color='b', label='data_train random')
+    line2, caplines2, barlinecols2 = plt.errorbar(df_merged[f"eval_{METRIC}_randomall"], y_positions, xerr=df_merged[f"eval_{METRIC}_std_randomall"], fmt='o', color='b', label='data_train random')
     # Make the error bar for 'random all' dotted
     for bar in barlinecols2:
         bar.set_linestyle(':')
 else:
-    plt.scatter(df_merged.eval_f1_macro_random1, y_positions, color='r', label='data_train biased', marker='o')
-    plt.scatter(df_merged.eval_f1_macro_randomall, y_positions, color='b', label='data_train random', marker='o')
+    plt.scatter(df_merged[f"eval_{METRIC}_random1"], y_positions, color='r', label='data_train biased', marker='o')
+    plt.scatter(df_merged[f"eval_{METRIC}_randomall"], y_positions, color='b', label='data_train random', marker='o')
 
 # Add arrows
 if AGGREGATE_METHOD_ONLY:
-    for y, x1, x2 in zip(y_positions, df_merged.eval_f1_macro_random1, df_merged.eval_f1_macro_randomall):
+    for y, x1, x2 in zip(y_positions, df_merged[f"eval_{METRIC}_random1"], df_merged[f"eval_{METRIC}_randomall"]):
         plt.annotate('', xy=(x2, y), xytext=(x1, y),
                      arrowprops=dict(arrowstyle="->", color="black", lw=1, ls="-"))
         # Calculate the difference and position the value slightly above the arrow
         difference = x2 - x1
         plt.text((x1 + x2) / 2, y, f'{difference:.3f}', ha='center', va='bottom', fontsize=13, color='black')
 
-plt.xlabel('F1 Macro', fontsize=14)  # Adjusted font size
+plt.xlabel(METRIC, fontsize=14)  # Adjusted font size
 
 if AGGREGATE_METHOD_ONLY:
     plt.yticks(y_positions, categories, fontsize=14)  # Adjusted font size
