@@ -1,5 +1,4 @@
-
-
+# This script implements one training run with a classical model
 
 import sys
 if sys.argv[0] != '/Applications/PyCharm.app/Contents/plugins/python/helpers/pydev/pydevconsole.py':
@@ -8,6 +7,7 @@ else:
     EXECUTION_TERMINAL = False
 print("Terminal execution: ", EXECUTION_TERMINAL, "  (sys.argv[0]: ", sys.argv[0], ")")
 
+SAMPLING_TEST = False
 
 ## load relevant packages
 import pandas as pd
@@ -17,6 +17,9 @@ import torch
 #from transformers import AutoTokenizer, AutoConfig, AutoModelForSequenceClassification
 #from transformers import TrainingArguments
 import time
+import pickle
+import gzip
+import random
 
 # Load helper functions
 import sys
@@ -121,28 +124,31 @@ MODEL_MAX_LENGTH = args.max_length
 
 
 # set global seed for reproducibility and against seed hacking
+# following advice here to reduce randomness risks: https://pytorch.org/docs/stable/notes/randomness
 N_RUN = args.n_run - 1
 N_RANDOM_RUNS_TOTAL = args.n_random_runs_total
 SEED_GLOBAL = 42
 np.random.seed(SEED_GLOBAL)
+torch.manual_seed(SEED_GLOBAL)
+random.seed(SEED_GLOBAL)
 
 # special variables for pimpo
 SAMPLE_NO_TOPIC = args.sample_size_no_topic  # for number in test set
 if "pimpo" in DATASET:
-    TRAIN_NOTOPIC_PROPORTION_TRAIN = 0.4
+    TRAIN_NOTOPIC_PROPORTION_TRAIN = 0.6  # needs to be at least 0.58 to enable balanced sample for more party families with 500 total sample
 else:
     TRAIN_NOTOPIC_PROPORTION_TRAIN = 0
 #SAMPLE_SIZE_CORPUS = args.sample_size_corpus
 SAMPLE_SIZE_TEST = args.sample_size_test
 
 # randomly assign different seeds for each run
-seed_runs_all = np.random.choice(range(1000), size=N_RANDOM_RUNS_TOTAL)
+seed_runs_all = np.random.choice(range(10000), size=N_RANDOM_RUNS_TOTAL)
 SEED_RUN = int(seed_runs_all[N_RUN])
 print("Iteration number: ", N_RUN)
 print("All random seeds: ", seed_runs_all)
 print("Random seed for this run: ", SEED_RUN)
 
-# not sure if I should keep TASK variable
+# Note: task variable currently not used
 assert DATASET.split("-")[0] in TASK, f"Mismatch between dataset {DATASET} and task {TASK}"
 
 # shorten model_name, can use in file names later
@@ -150,6 +156,7 @@ MODEL_NAME_SHORT = MODEL_NAME.split("/")[-1]
 MODEL_NAME_SHORT = MODEL_NAME_SHORT[:26]  # longer names lead to file name length bugs before
 print(MODEL_NAME_SHORT)
 
+# testing that model and method combination makes sense
 if ("nli" in MODEL_NAME.lower()) and ("generation" in METHOD.lower()):
     raise Exception(f"MODEL_NAME {MODEL_NAME} not implemented for METHOD {METHOD}")
 elif ("t5" in MODEL_NAME.lower()) and ("nli" in METHOD.lower() or "standard_dl" in METHOD.lower() or "disc" in METHOD.lower()):
@@ -171,8 +178,6 @@ else:
 
 
 
-
-
 ##### load dataset
 if "pimpo" in DATASET:
     df = pd.read_csv("./data-clean/df_pimpo_samp_train.zip", engine="python")
@@ -186,7 +191,7 @@ elif "cap-merge" in DATASET:
     df = pd.read_csv("./data-clean/df_cap_merge_train.zip", engine="python")
     df_test = pd.read_csv("./data-clean/df_cap_merge_test.zip", engine="python")
     df_cl = df.copy(deep=True)
-    if GROUP_COL != "domain":
+    if (GROUP_COL != "domain") and (GROUP_COL != "randomall"):
         raise Exception(f"Group column {GROUP_COL} for dataset {DATASET} should always be 'domain'.")
 elif "cap-sotu" in DATASET:
     df = pd.read_csv("./data-clean/df_cap_sotu_train.zip", engine="python")
@@ -199,9 +204,6 @@ else:
 ### preprocessing data
 
 ## prepare input text data
-#if VECTORIZER == "tfidf":
-#    if METHOD == "classical_ml":
-#        df_cl["text_prepared"] = df_cl["text_preceding"].fillna('') + " " + df_cl["text_original"] + " " + df_cl["text_following"].fillna('')
 if "pimpo" in DATASET:
     if any(substring in METHOD for substring in ["nli", "disc"]) or (METHOD == "generation"):
         df_cl["text_prepared"] = 'The quote: "' + df_cl["text_original_trans"] + '"'
@@ -223,9 +225,13 @@ elif "cap-merge" in DATASET:
     df_test["text_prepared"] = df_test["text"]
     df_cap_sotu = df_cl[df_cl.domain == "speech"]
     df_cap_sotu_test = df_test[df_test.domain == "speech"]
+    df_cap_court = df_cl[df_cl.domain == "legal"]
+    df_cap_court_test = df_test[df_test.domain == "legal"]
     if any(substring in METHOD for substring in ["nli", "disc"]) or (METHOD == "generation"):
         df_cl.loc[df_cl.domain == "speech", "text_prepared"] = 'The quote: "' + df_cap_sotu["text_original"] + '"'
         df_test.loc[df_test.domain == "speech", "text_prepared"] = 'The quote: "' + df_cap_sotu_test["text_original"] + '"'
+        df_cl.loc[df_cl.domain == "legal", "text_prepared"] = 'The quote: "' + df_cap_court["text_prepared"] + '"'
+        df_test.loc[df_test.domain == "legal", "text_prepared"] = 'The quote: "' + df_cap_court_test["text_prepared"] + '"'
     elif "standard" in METHOD:
         df_cl.loc[df_cl.domain == "speech", "text_prepared"] = df_cap_sotu["text_original"]
         df_test.loc[df_test.domain == "speech", "text_prepared"] = df_cap_sotu_test["text_original"]
@@ -251,7 +257,7 @@ else:
 
 
 ## data checks
-#print("Dataset: ", DATASET, "\n")
+print("Dataset: ", DATASET, "\n")
 # verify that numeric labels is in alphabetical order of label_text (can avoid issues for NLI)
 labels_num_via_numeric = df_cl[~df_cl.label_text.duplicated(keep="first")].sort_values("label_text").labels.tolist()  # labels num via labels: get labels from data when ordering label text alphabetically
 labels_num_via_text = pd.factorize(np.sort(df_cl.label_text.unique()))[0]  # label num via label_text: create label numeric via label text
@@ -260,8 +266,7 @@ assert all(labels_num_via_numeric == labels_num_via_text)
 
 
 
-### select training data
-import random
+### select training data and groups
 random.seed(SEED_RUN)
 
 def select_group_members_randomly(df=None, group_col=None, n_members_str=None, seed=None):
@@ -271,22 +276,23 @@ def select_group_members_randomly(df=None, group_col=None, n_members_str=None, s
     print(f"Group selected: {group_join}  for seed {seed}")
     group_join = r'\b' + r'\b|\b'.join(group_join) + r'\b'
     #group_join = f"^({group_join})$"  # to only look at exact matches
-    return group_join, seed+1
+    return group_join, seed+42
 
-#group_join = random.sample(list(df[GROUP_COL].unique().astype(str)), int(GROUP_SAMPLE[-1]))
-#r'\b' + r'\b|\b'.join(group_join) + r'\b'
 
-label_distribution_per_group_member = df_cl.groupby(GROUP_COL).apply(lambda x: x.label_text.value_counts())
-print("Overall label distribution per group member:\n", label_distribution_per_group_member)
+if GROUP_COL != "randomall":
+    label_distribution_per_group_member = df_cl.groupby(GROUP_COL).apply(lambda x: x.label_text.value_counts())
+    print("Overall label distribution per group member:\n", label_distribution_per_group_member)
+else:
+    print("Overall label distribution per group member:\n No group used. Sampling with randomall.")
 
-# sample training data
-# unrealistic balanced sample without AL
-# redo sampling for different groups until get a fully balanced sample (or 20 iter)
+
+# sample balanced training data
+# redo sampling for different groups until get a fully balanced sample for several iterations
 # balanced samples are important to remove data imbalanced as intervening variable for performance differences
 imbalanced_sample = True
 counter = 0
-seed_run_update = SEED_RUN
-while imbalanced_sample and (counter <= 10):
+seed_run_update = SEED_RUN if GROUP_COL != "continent" else SEED_RUN+42  # otherwise only oversamples asia and europe
+while imbalanced_sample and (counter <= 50):
     # select data based on group. redo sampling with different random seed if necessary
     if "randomall" in GROUP_SAMPLE:
         df_cl_group = df_cl.copy(deep=True)
@@ -300,7 +306,11 @@ while imbalanced_sample and (counter <= 10):
 
     # sample x% of training data for no topic, then share the remainder equally across classes
     n_sample_notopic = int(SAMPLE_SIZE_TRAIN * TRAIN_NOTOPIC_PROPORTION_TRAIN)
-    n_sample_perclass = int((SAMPLE_SIZE_TRAIN - n_sample_notopic) / (len(df_cl.label_text.unique()) - 1))
+    if "pimpo" in DATASET:
+        n_classes_for_sample = len(df_cl.label_text.unique()) - 1
+    else:
+        n_classes_for_sample = len(df_cl.label_text.unique())
+    n_sample_perclass = int((SAMPLE_SIZE_TRAIN - n_sample_notopic) / n_classes_for_sample)
     df_train_samp1 = df_cl_group.groupby("label_text", as_index=False, group_keys=False).apply(
         lambda x: x.sample(min(n_sample_perclass, len(x)), random_state=SEED_RUN) if x.label_text.unique()[0] != "no_topic" else None)
     if "pimpo" in DATASET:
@@ -327,8 +337,8 @@ while imbalanced_sample and (counter <= 10):
         imbalanced_sample = False
     counter += 1
 
-if counter == 11:
-    raise ValueError("could not sample balanced training data after 10 iterations")
+if counter == 51:
+    raise ValueError("could not sample balanced training data after 50 iterations")
 print(f"\nFINAL DF_TRAIN SAMPLE (BALANCED) for group {group_join}:\ndf_train.label_text.value_counts:\n", df_train.label_text.value_counts())
 
 
@@ -347,11 +357,9 @@ if EXECUTION_TERMINAL == False:
 
 
 
-
 ##### code specific to classical_ml
 
 ## lemmatize prepared text
-# TODO: put in different script upstream (with embeddings probably)
 import spacy
 
 nlp = spacy.load("en_core_web_md")
@@ -371,85 +379,49 @@ def lemmatize_and_stopwordremoval(text_lst):
     return texts_lemma
 
 
-df_train["text_prepared"] = lemmatize_and_stopwordremoval(df_train.text_prepared)
-df_test["text_prepared"] = lemmatize_and_stopwordremoval(df_test.text_prepared)
-print("Spacy lemmatization done")
+if not SAMPLING_TEST:
+    df_train["text_prepared"] = lemmatize_and_stopwordremoval(df_train.text_prepared)
+    df_test["text_prepared"] = lemmatize_and_stopwordremoval(df_test.text_prepared)
+    print("Spacy lemmatization done")
 
 
-if METHOD in ["standard_dl", "dl_embed", "classical_ml"]:
+# create final formatted dfs
+if METHOD in ["classical_ml"]:
     df_train_format = df_train.copy(deep=True)
     df_test_format = df_test.copy(deep=True)
 
 
 
+#### train classifier
 
-
-
-
-##### train classifier
-
-## hyperparameters for final tests
-# selective load one decent set of hps for testing
-#hp_study_dic = joblib.load("/Users/moritzlaurer/Dropbox/PhD/Papers/nli/snellius/NLI-experiments/results/manifesto-8/optuna_study_SVM_tfidf_01000samp_20221006.pkl")
-"""import joblib
-
-n_sample_str = MAX_SAMPLE
-while len(str(n_sample_str)) <= 3:
-    n_sample_str = "0" + str(n_sample_str)
-
-hp_study_dic = joblib.load(f"./results/{DATASET}/optuna_study_logistic_tfidf_{n_sample_str}samp_{DATASET}_20230207_t.pkl")
-
-
-hyperparams_vectorizer = hp_study_dic['optuna_study'].best_trial.user_attrs["hyperparameters_vectorizer"]
-hyperparams_clf = hp_study_dic['optuna_study'].best_trial.user_attrs["hyperparameters_classifier"]
-print("Hyperparameters vectorizer: ", hyperparams_vectorizer)
-print("Hyperparameters classifier: ", hyperparams_clf)
-
-# ! restrict to word-level vectorizer for easier interpretability
-hyperparams_vectorizer["analyzer"] = "word"
-hyperparams_vectorizer["ngram_range"] = (1, 1)
-hyperparams_vectorizer["min_df"] = 1
-"""
-
-hyperparams_vectorizer = {"analyzer": "word", "ngram_range": (1, 1), "min_df": 1}
-hyperparams_clf = {"random_state": SEED_RUN}
+## hyperparameters
+# hyperparameters based on average hyperparameters for experiments with
+# 500 data points in Table 39 (log reg) of https://www.cambridge.org/core/journals/political-analysis/article/less-annotating-more-classifying-addressing-the-data-scarcity-issue-of-supervised-machine-learning-with-deep-transfer-learning-and-bertnli/05BB05555241762889825B080E097C27
+hyperparams_vectorizer = {"analyzer": "word", "ngram_range": (1, 2), "min_df": 0.01, "max_df": 0.8}
+hyperparams_clf = {"random_state": SEED_RUN, "C": 50.0, "max_iter": 200}  # keeping C and max_iter lower for more regularization and less overfitting
 HYPER_PARAMS = {**hyperparams_vectorizer, **hyperparams_clf}
 
+if SAMPLING_TEST:
+    hyperparams_clf = {"random_state": SEED_RUN, "max_iter": 1}
 
 ### text pre-processing
 
 # choose correct pre-processed text column here
-import ast
 if VECTORIZER == "tfidf":
     from sklearn.feature_extraction.text import TfidfVectorizer
-    vectorizer_sklearn = TfidfVectorizer(lowercase=True, stop_words=None, norm="l2", use_idf=True, smooth_idf=True, **hyperparams_vectorizer)  # ngram_range=(1,2), max_df=0.9, min_df=0.02, token_pattern="(?u)\b\w\w+\b"
+    vectorizer_sklearn = TfidfVectorizer(lowercase=True, stop_words=None, norm="l2", use_idf=True, smooth_idf=True, **hyperparams_vectorizer)
 
-    # tests: remove group specific tokens
-    """if "random" not in GROUP:
-        df_coef_diff_group = pd.read_csv(f"/Users/moritzlaurer/Dropbox/PhD/Papers/meta-metrics/meta-metrics-repo/data-classified/pimpo/df_tokens_pimpo_{GROUP}_samp1000_20230427.csv")
-        tokens_group_specific = df_coef_diff_group["token"].tolist()[:N_TOKENS_REMOVE]
-        tokens_group_specific = [r"\b" + token + r"\b" for token in tokens_group_specific]
-        if N_TOKENS_REMOVE > 0:
-            # exclude rows in df_test_format that contains any of the group specific tokens in text_prepared column
-            #df_test_format = df_test_format[~df_test_format.text_prepared.str.contains("|".join(tokens_group_specific))]
-            # replace group specific tokens with empty string
-            df_test_format.text_prepared = df_test_format.text_prepared.str.replace("|".join(tokens_group_specific), "", regex=True)"""
-
-        #pd.Series("We need to work with the law. workers unite!").str.replace("|".join(tokens_group_specific), "", regex=True)
-
-    # fit vectorizer on entire dataset - theoretically leads to some leakage on feature distribution in TFIDF (but is very fast, could be done for each test. And seems to be common practice) - OOV is actually relevant disadvantage of classical ML  #https://github.com/vanatteveldt/ecosent/blob/master/src/data-processing/19_svm_gridsearch.py
-    # ! using columns here that are already bag-of-worded
+    # fit vectorizer on entire dataset
+    # theoretically leads to some leakage on feature distribution in TFIDF (but is very fast, could be done for each test. And seems to be common practice)
+    # OOV is actually relevant disadvantage of classical ML  #https://github.com/vanatteveldt/ecosent/blob/master/src/data-processing/19_svm_gridsearch.py
     vectorizer_sklearn.fit(pd.concat([df_train_format.text_prepared, df_test_format.text_prepared]))
     X_train = vectorizer_sklearn.transform(df_train_format.text_prepared)
     X_test = vectorizer_sklearn.transform(df_test_format.text_prepared)
-
-    #X_test_ood = vectorizer_sklearn.transform(df_test_format_ood.text_prepared)
 else:
     raise NotImplementedError
 
 y_train = df_train_format.labels
 y_test = df_test_format.labels
-
 
 
 ## initialise and train classifier
@@ -474,8 +446,7 @@ print("\nTrain time:", train_time, "\n")
 label_gold = y_test
 label_pred = clf.predict(X_test)
 
-
-### metrics
+## metrics
 from helpers import compute_metrics_classical_ml
 results_test = compute_metrics_classical_ml(label_pred, label_gold, label_text_alphabetical=np.sort(df_cl.label_text.unique()))
 
@@ -486,13 +457,10 @@ print(results_test_cl)
 
 
 ### save results
-import pickle
-import gzip
 
 n_sample_str = SAMPLE_SIZE_TRAIN
 while len(str(n_sample_str)) <= 3:
     n_sample_str = "0" + str(n_sample_str)
-
 
 # merge prediction results with df_test to enable possible meta-data calculations etc. later
 df_results = pd.DataFrame(
@@ -512,14 +480,21 @@ data_dic = {
         "dataset": DATASET, "group_sample_strategy": GROUP_SAMPLE, "group_col": GROUP_COL, "method": METHOD,
         "model_name": MODEL_NAME, "sample_size_train": SAMPLE_SIZE_TRAIN, #"sample_size_test": SAMPLE_SIZE_TEST,
         "group_members": group_join.replace("\\b", ""), "seed_run": SEED_RUN, "n_run": N_RUN, "date": DATE, "hyperparams": HYPER_PARAMS,
-        "train_time": train_time, "model_size": MODEL_SIZE, "task": TASK, "model_params": None, "generation_config": None,
+        "train_time_sec": train_time, "model_size": MODEL_SIZE, "task": TASK, "model_params": None, "generation_config": None,
+        "data_train_biased": True if GROUP_SAMPLE != "randomall" else False,
     },
     "experiment_results": results_test_cl,
     "df_train": df_train,
     "df_test_results": df_test_results,
 }
 
-if SAVE_OUTPUTS:
+
+if SAMPLING_TEST:
+    filename = f"./results-test/{DATASET}/results_{DATASET}_{GROUP_SAMPLE}_{GROUP_COL}_{METHOD}_{MODEL_NAME_SHORT}_samp{n_sample_str}_n_run{N_RUN}_seed{SEED_RUN}_{DATE}.pkl.gz"
+    # Use 'wb' to write binary data
+    with gzip.open(filename, 'wb') as f:
+        pickle.dump(data_dic, f)
+elif SAVE_OUTPUTS:
     filename = f"./results/{DATASET}/results_{DATASET}_{GROUP_SAMPLE}_{GROUP_COL}_{METHOD}_{MODEL_NAME_SHORT}_samp{n_sample_str}_n_run{N_RUN}_seed{SEED_RUN}_{DATE}.pkl.gz"
     # Use 'wb' to write binary data
     with gzip.open(filename, 'wb') as f:

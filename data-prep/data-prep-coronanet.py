@@ -50,6 +50,10 @@ df_cl["continent"] = [country_alpha2_to_continent_code(iso2) if ((not pd.isna(is
 # special case for country not covered by package: if in ISO_A2 column [TL, VA] then convert value in continent column to continent
 df_cl.loc[df_cl["ISO_A2"] == "VA", "continent"] = "EU"
 df_cl.loc[df_cl["ISO_A2"] == "TL", "continent"] = "AS"
+
+# NA to NAM to avoid np.nan issues
+df_cl["continent"].replace("NA", "NAM", inplace=True)
+
 # time
 df_cl["year"] = df_cl["recorded_date"].apply(lambda x: str(x)[:4])
 df_cl["year"].value_counts()

@@ -1,6 +1,6 @@
 #!/bin/bash
 # Set batch job requirements
-#SBATCH -t 3:00:00
+#SBATCH -t 1:00:00
 #SBATCH --partition=rome
 #SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --mail-user=m.laurer@vu.nl
@@ -23,11 +23,20 @@ pip install -r requirements.txt
 #chmod +x ./batch-scripts/cpu.bash
 #./batch-scripts/cpu.bash "cap-merge" "cap-merge" "classical_ml" "domain" "randomall,random1" 6
 
-# cpu runs snellius
-#sbatch --output=./meta-metrics-repo/results/cap-merge/logs/output_classical.txt ./meta-metrics-repo/batch-scripts/cpu.bash "cap-merge" "cap-merge" "classical_ml" "domain" "randomall,random1" 6
-#sbatch --output=./meta-metrics-repo/results/coronanet/logs/output_classical.txt ./meta-metrics-repo/batch-scripts/cpu.bash "coronanet" "coronanet" "classical_ml" "year,ISO_A3,continent" "randomall,random1" 6
-#sbatch --output=./meta-metrics-repo/results/pimpo/logs/output_classical.txt ./meta-metrics-repo/batch-scripts/cpu.bash "pimpo" "pimpo-simple" "classical_ml" "country_iso,parfam_text,decade" "randomall,random1" 6
-#sbatch --output=./meta-metrics-repo/results/cap-sotu/logs/output_classical.txt ./meta-metrics-repo/batch-scripts/cpu.bash "cap-sotu" "cap-sotu" "classical_ml" "pres_party,phase" "randomall,random1" 6
+## cpu runs snellius
+# biased runs
+#sbatch --output=./meta-metrics-repo/results/cap-merge/logs/output_classical_biased.txt ./meta-metrics-repo/batch-scripts/cpu.bash "cap-merge" "cap-merge" "classical_ml" "domain" "random1" 6
+#sbatch --output=./meta-metrics-repo/results/coronanet/logs/output_classical_biased.txt ./meta-metrics-repo/batch-scripts/cpu.bash "coronanet" "coronanet" "classical_ml" "year,ISO_A3" "random1" 6
+#sbatch --output=./meta-metrics-repo/results/pimpo/logs/output_classical_biased.txt ./meta-metrics-repo/batch-scripts/cpu.bash "pimpo" "pimpo-simple" "classical_ml" "country_iso,parfam_text,decade" "random1" 6
+#sbatch --output=./meta-metrics-repo/results/cap-sotu/logs/output_classical_biased.txt ./meta-metrics-repo/batch-scripts/cpu.bash "cap-sotu" "cap-sotu" "classical_ml" "pres_party,phase" "random1" 6
+#sbatch --output=./meta-metrics-repo/results/coronanet/logs/output_classical_biased.txt ./meta-metrics-repo/batch-scripts/cpu.bash "coronanet" "coronanet" "classical_ml" "continent" "random3" 6
+
+# random/unbiased runs. group_col has no effect here, but still needs to be specified
+#sbatch --output=./meta-metrics-repo/results/cap-merge/logs/output_classical_random.txt ./meta-metrics-repo/batch-scripts/cpu.bash "cap-merge" "cap-merge" "classical_ml" "randomall" "randomall" 6
+#sbatch --output=./meta-metrics-repo/results/coronanet/logs/output_classical_random.txt ./meta-metrics-repo/batch-scripts/cpu.bash "coronanet" "coronanet" "classical_ml" "randomall" "randomall" 6
+#sbatch --output=./meta-metrics-repo/results/pimpo/logs/output_classical_random.txt ./meta-metrics-repo/batch-scripts/cpu.bash "pimpo" "pimpo-simple" "classical_ml" "randomall" "randomall" 6
+#sbatch --output=./meta-metrics-repo/results/cap-sotu/logs/output_classical_random.txt ./meta-metrics-repo/batch-scripts/cpu.bash "cap-sotu" "cap-sotu" "classical_ml" "randomall" "randomall" 6
+
 
 # grab command line arguments
 dataset=$1
@@ -44,21 +53,18 @@ IFS=',' read -ra group_sample_array <<< "$group_sample_lst"
 echo "group_col_array: ${group_col_array[@]}"
 echo "group_sample_array: ${group_sample_array[@]}"
 
-#dataset=$dataset  #'coronanet' 'uk-leftright-econ', 'pimpo', cap-merge, cap-sotu
-#task=$task  #"coronanet" "uk-leftright-simple", "pimpo-simple", cap-merge, cap-sotu
+#dataset=$dataset
+#task=$task
 model="log_reg"  #$1  #"MoritzLaurer/DeBERTa-v3-base-mnli-fever-docnli-ling-2c"   #"google/electra-base-discriminator"   #'google/flan-t5-base'  #'MoritzLaurer/DeBERTa-v3-large-mnli-fever-anli-ling-wanli'  #'MoritzLaurer/DeBERTa-v3-xsmall-mnli-fever-anli-ling-binary'  # "MoritzLaurer/DeBERTa-v3-base-mnli-fever-docnli-ling-2c", "google/flan-t5-base"
 #method='nli_short'  #$2  #'nli_short'  # disc_short, standard_dl, nli_short, nli_long, nli_void, generation
 model_size=$model
 vectorizer='tfidf'
-#group_col_array=$group_col_array  # ("year" "continent") "country_iso", "parfam_text", "parfam_text_aggreg", "decade"
-#group_sample_array=$group_sample_array  # ("randomall" "random1") ("random1") ("random2") ("random3") ("randomall") ("nld" "esp" "dnk" "deu") ("CHR" "LEF" "LIB" "NAT" "SOC")
-study_date=20231016
-sample_size_train_array=(100 500)  # (100, 500)
+#group_col_array=$group_col_array
+#group_sample_array=$group_sample_array
+study_date=20231026
+sample_size_train_array=(500)  # (100, 500)
 sample_size_no_topic=20000
-sample_size_test=6000
-#sample_size_corpus=5000
 #n_random_runs_total=6
-#n_tokens_remove_lst=(0 5 10)
 max_length=448  #512
 
 total_iteration_required=$(($n_random_runs_total * ${#group_sample_array[@]} * ${#group_col_array[@]} * ${#sample_size_train_array[@]}))
@@ -77,7 +83,7 @@ do
         echo "Variables iteration: group_sample $group_sample, group_col $group_col, and iteration $n_run"
         python analysis-classical-run.py --dataset $dataset --task $task \
                 --method $method --model $model --vectorizer $vectorizer --study_date $study_date \
-                --sample_size_train $sample_size_train --sample_size_no_topic $sample_size_no_topic --sample_size_test $sample_size_test \
+                --sample_size_train $sample_size_train --sample_size_no_topic $sample_size_no_topic \
                 --n_random_runs_total $n_random_runs_total --n_run $n_run \
                 --group_sample $group_sample --group_column $group_col \
                 --max_length $max_length --save_outputs \
