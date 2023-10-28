@@ -20,25 +20,31 @@ pip install --upgrade pip
 pip3 install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cpu
 pip install -r requirements.txt
 
+# continent random1 fix - deletable
+#sbatch --output=./meta-metrics-repo/results/coronanet/logs/output_nli_biased.txt ./meta-metrics-repo/batch-scripts/gpu.bash "coronanet" "coronanet" "nli_short" "continent" "random1" 6
+#sbatch --output=./meta-metrics-repo/results/coronanet/logs/output_standard_biased.txt ./meta-metrics-repo/batch-scripts/gpu.bash "coronanet" "coronanet" "standard_dl" "continent" "random1" 6
+#sbatch --output=./meta-metrics-repo/results/coronanet/logs/output_nli_void_biased.txt ./meta-metrics-repo/batch-scripts/gpu.bash "coronanet" "coronanet" "nli_void" "continent" "random1" 6
+
+
 ## for snellius run with terminal variables
 # biased runs
 #sbatch --output=./meta-metrics-repo/results/cap-merge/logs/output_nli_biased.txt ./meta-metrics-repo/batch-scripts/gpu.bash "cap-merge" "cap-merge" "nli_short" "domain" "random1" 6
-#sbatch --output=./meta-metrics-repo/results/coronanet/logs/output_nli_biased.txt ./meta-metrics-repo/batch-scripts/gpu.bash "coronanet" "coronanet" "nli_short" "year,ISO_A3" "random1" 6
+#sbatch --output=./meta-metrics-repo/results/coronanet/logs/output_nli_biased.txt ./meta-metrics-repo/batch-scripts/gpu.bash "coronanet" "coronanet" "nli_short" "year,continent" "random1" 6
 #sbatch --output=./meta-metrics-repo/results/pimpo/logs/output_nli_biased.txt ./meta-metrics-repo/batch-scripts/gpu.bash "pimpo" "pimpo-simple" "nli_short" "country_iso,parfam_text,decade" "random1" 6
 #sbatch --output=./meta-metrics-repo/results/cap-sotu/logs/output_nli_biased.txt ./meta-metrics-repo/batch-scripts/gpu.bash "cap-sotu" "cap-sotu" "nli_short" "pres_party,phase" "random1" 6
-#sbatch --output=./meta-metrics-repo/results/coronanet/logs/output_nli_biased.txt ./meta-metrics-repo/batch-scripts/gpu.bash "coronanet" "coronanet" "nli_short" "continent" "random3" 6
+#sbatch --output=./meta-metrics-repo/results/coronanet/logs/output_nli_biased.txt ./meta-metrics-repo/batch-scripts/gpu.bash "coronanet" "coronanet" "nli_short" "ISO_A3" "random3" 6
 
 #sbatch --output=./meta-metrics-repo/results/cap-merge/logs/output_standard_biased.txt ./meta-metrics-repo/batch-scripts/gpu.bash "cap-merge" "cap-merge" "standard_dl" "domain" "random1" 6
-#sbatch --output=./meta-metrics-repo/results/coronanet/logs/output_standard_biased.txt ./meta-metrics-repo/batch-scripts/gpu.bash "coronanet" "coronanet" "standard_dl" "year,ISO_A3" "random1" 6
+#sbatch --output=./meta-metrics-repo/results/coronanet/logs/output_standard_biased.txt ./meta-metrics-repo/batch-scripts/gpu.bash "coronanet" "coronanet" "standard_dl" "year,continent" "random1" 6
 #sbatch --output=./meta-metrics-repo/results/pimpo/logs/output_standard_biased.txt ./meta-metrics-repo/batch-scripts/gpu.bash "pimpo" "pimpo-simple" "standard_dl" "country_iso,parfam_text,decade" "random1" 6
 #sbatch --output=./meta-metrics-repo/results/cap-sotu/logs/output_standard_biased.txt ./meta-metrics-repo/batch-scripts/gpu.bash "cap-sotu" "cap-sotu" "standard_dl" "pres_party,phase" "random1" 6
-#sbatch --output=./meta-metrics-repo/results/coronanet/logs/output_standard_biased.txt ./meta-metrics-repo/batch-scripts/gpu.bash "coronanet" "coronanet" "standard_dl" "continent" "random3" 6
+#sbatch --output=./meta-metrics-repo/results/coronanet/logs/output_standard_biased.txt ./meta-metrics-repo/batch-scripts/gpu.bash "coronanet" "coronanet" "standard_dl" "ISO_A3" "random3" 6
 
 #sbatch --output=./meta-metrics-repo/results/cap-merge/logs/output_nli_void_biased.txt ./meta-metrics-repo/batch-scripts/gpu.bash "cap-merge" "cap-merge" "nli_void" "domain" "random1" 6
-#sbatch --output=./meta-metrics-repo/results/coronanet/logs/output_nli_void_biased.txt ./meta-metrics-repo/batch-scripts/gpu.bash "coronanet" "coronanet" "nli_void" "year,ISO_A3" "random1" 6
+#sbatch --output=./meta-metrics-repo/results/coronanet/logs/output_nli_void_biased.txt ./meta-metrics-repo/batch-scripts/gpu.bash "coronanet" "coronanet" "nli_void" "year,continent" "random1" 6
 #sbatch --output=./meta-metrics-repo/results/pimpo/logs/output_nli_void_biased.txt ./meta-metrics-repo/batch-scripts/gpu.bash "pimpo" "pimpo-simple" "nli_void" "country_iso,parfam_text,decade" "random1" 6
 #sbatch --output=./meta-metrics-repo/results/cap-sotu/logs/output_nli_void_biased.txt ./meta-metrics-repo/batch-scripts/gpu.bash "cap-sotu" "cap-sotu" "nli_void" "pres_party,phase" "random1" 6
-#sbatch --output=./meta-metrics-repo/results/coronanet/logs/output_nli_void_biased.txt ./meta-metrics-repo/batch-scripts/gpu.bash "coronanet" "coronanet" "nli_void" "continent" "random3" 6
+#sbatch --output=./meta-metrics-repo/results/coronanet/logs/output_nli_void_biased.txt ./meta-metrics-repo/batch-scripts/gpu.bash "coronanet" "coronanet" "nli_void" "ISO_A3" "random3" 6
 
 # random/unbiased runs. group_col has no effect here, but still needs to be specified
 #sbatch --output=./meta-metrics-repo/results/cap-merge/logs/output_nli_random.txt ./meta-metrics-repo/batch-scripts/gpu.bash "cap-merge" "cap-merge" "nli_short" "randomall" "randomall" 6

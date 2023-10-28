@@ -26,10 +26,10 @@ pip install -r requirements.txt
 ## cpu runs snellius
 # biased runs
 #sbatch --output=./meta-metrics-repo/results/cap-merge/logs/output_classical_biased.txt ./meta-metrics-repo/batch-scripts/cpu.bash "cap-merge" "cap-merge" "classical_ml" "domain" "random1" 6
-#sbatch --output=./meta-metrics-repo/results/coronanet/logs/output_classical_biased.txt ./meta-metrics-repo/batch-scripts/cpu.bash "coronanet" "coronanet" "classical_ml" "year,ISO_A3" "random1" 6
+#sbatch --output=./meta-metrics-repo/results/coronanet/logs/output_classical_biased.txt ./meta-metrics-repo/batch-scripts/cpu.bash "coronanet" "coronanet" "classical_ml" "year,continent" "random1" 6
 #sbatch --output=./meta-metrics-repo/results/pimpo/logs/output_classical_biased.txt ./meta-metrics-repo/batch-scripts/cpu.bash "pimpo" "pimpo-simple" "classical_ml" "country_iso,parfam_text,decade" "random1" 6
 #sbatch --output=./meta-metrics-repo/results/cap-sotu/logs/output_classical_biased.txt ./meta-metrics-repo/batch-scripts/cpu.bash "cap-sotu" "cap-sotu" "classical_ml" "pres_party,phase" "random1" 6
-#sbatch --output=./meta-metrics-repo/results/coronanet/logs/output_classical_biased.txt ./meta-metrics-repo/batch-scripts/cpu.bash "coronanet" "coronanet" "classical_ml" "continent" "random3" 6
+#sbatch --output=./meta-metrics-repo/results/coronanet/logs/output_classical_biased.txt ./meta-metrics-repo/batch-scripts/cpu.bash "coronanet" "coronanet" "classical_ml" "ISO_A3" "random3" 6
 
 # random/unbiased runs. group_col has no effect here, but still needs to be specified
 #sbatch --output=./meta-metrics-repo/results/cap-merge/logs/output_classical_random.txt ./meta-metrics-repo/batch-scripts/cpu.bash "cap-merge" "cap-merge" "classical_ml" "randomall" "randomall" 6
