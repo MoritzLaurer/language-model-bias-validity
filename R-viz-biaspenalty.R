@@ -24,6 +24,8 @@ d = read_csv("./results/df_results.csv.gz") |>
   #filter(!is.na(method)) |> 
   group_by(task, group, method) |>
   arrange(task, group, method, bias) |>
+  mutate(task = recode(task, "pimpo-simple" = "PImPo", "cap-merge"="CAP-2", "cap-sotu"="CAP-SotU",
+                       "coronanet"="CoronaNet")) |>
   #mutate(f1_macro_dev=f1_macro - mean(f1_macro))  |>
   ungroup()
 
@@ -95,6 +97,7 @@ d5 = rbind(
 ) |>
   mutate(f=fct_rev(f), g=fct_rev(g))
 
+
 # Using global mean, but confidence interval based on task-centered means
 plot_aggregated <- ggplot(d5, aes(x=f1_macro, y=method, color=bias)) + 
   geom_point(data=filter(d5, bias=="diff"), aes(x=meandiff)) + 
@@ -112,7 +115,8 @@ plot_aggregated <- ggplot(d5, aes(x=f1_macro, y=method, color=bias)) +
                aes(x=f1_macro-sd, xend=f1_macro+sd, yend=method)) + 
   ggh4x::facet_nested(. ~ g, scales = "free", space = "free") + 
   theme_classic() + 
-  scale_color_discrete(name="Training data sampling strategy", breaks=c("Biased", "Random")) + 
+  scale_color_discrete(name="Training data sampling strategy", breaks=c("Biased", "Random")) +
+  scale_x_continuous(breaks=c(.5 + (0:10*.05),  -.025, 0)) +
   theme(panel.grid.major.y = element_line(),
         legend.position = "bottom") + 
   xlab("") + 
@@ -120,6 +124,7 @@ plot_aggregated <- ggplot(d5, aes(x=f1_macro, y=method, color=bias)) +
 
 plot_aggregated
 plot_aggregated_data <- plot_aggregated$data
+
 
 
 # Using task-centered means

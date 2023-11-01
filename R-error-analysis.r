@@ -43,10 +43,11 @@ coefficients <- fixef(m_single_nointercept)
 odds_ratios <- exp(coefficients)
 # probabilities without bias
 odds_ratio_to_prob <- function(x) x / (x+1)
-sapply(odds_ratios[1:4],  odds_ratio_to_prob)
+probability_error_without_bias <- sapply(odds_ratios[1:4],  odds_ratio_to_prob)
 # probabilities with bias
-sapply(odds_ratios[1:4] * odds_ratios[5:8],  odds_ratio_to_prob)
+probability_error_with_bias <- sapply(odds_ratios[1:4] * odds_ratios[5:8],  odds_ratio_to_prob)
 
+bias_benefit <- probability_error_without_bias - probability_error_with_bias
 
 
 ### model per data + group var
