@@ -29,17 +29,19 @@ d = read_parquet("./results/df_test_concat.parquet.gzip") |>
 #  ungroup()  # Remove grouping
 
 
-m1 = glmer(error ~ -1 + classifier*biased_row + (1 | training_run), family=binomial, data=d)
-pred <- ggeffects::ggpredict(m1, terms = c("classifier", "biased_row")) |>
-  as_tibble() |>
-  mutate(intest=if_else(group==0, "Yes", "No"))
+#m1 = glmer(error ~ -1 + classifier*biased_row + (1 | training_run), family=binomial, data=d)
+#pred <- ggeffects::ggpredict(m1, terms = c("classifier", "biased_row")) |>
+#  as_tibble() |>
+#  mutate(intest=if_else(group==0, "Yes", "No"))
 
 
 get_plotdata = function(dataset) {
+  # model with intercept to get confidence intervals
   m1 = glmer(error ~ -1 + classifier*biased_row + (1 | training_run), family=binomial, data=dataset)
   pred <- ggeffects::ggpredict(m1, terms = c("classifier", "biased_row")) |>
     as_tibble() |>
-    mutate(intest=if_else(group==0, "Yes", "No"))
+    mutate(intest=if_else(group==1, "Yes", "No"))
+  # model without intercept for more interpretable outputs
   m2 = glmer(error ~ -1 + classifier + classifier:biased_row + (1 | training_run), family=binomial, data=dataset)
   
   summary(m2)$coefficients |>
@@ -76,7 +78,10 @@ ggplot(p_tot, aes(y=x, yend=x, x=predicted, xend=conf.high, color=intest)) +
   geom_vline(data=filter(p_tot, intest=="Odds ratio") |> add_column(xx=1), 
              mapping=aes(xintercept=xx), color="grey", lty=2) + 
   theme_classic() + 
-  scale_color_discrete(name="Test text from same group member as training texts?", breaks=c("No", "Yes", "Odds ratio")) + 
+  #scale_color_discrete(name="Test text from same group member as training texts?", breaks=c("No", "Yes", "Odds ratio")) + 
+  scale_color_manual(name="Test text from same group member as training texts?", 
+                     values=c("Yes"="#F8766D", "No"="#619CFF", "Odds ratio"="#00BA38"),
+                     breaks=c("Yes", "No", "Odds ratio")) +
   theme(panel.grid.major.y = element_line(),
         legend.position = "bottom") + 
   xlab("") + 
