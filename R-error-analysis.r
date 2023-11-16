@@ -17,11 +17,11 @@ d = read_parquet("./results/df_test_concat.parquet.gzip") |>
   mutate(error = as.numeric(label_pred != label_gold)) |>
   # clean classifier names
   mutate(classifier = recode(method, nli_short = "BERT-NLI", nli_void = "BERT-NLI-void", standard_dl = "BERT-base", "classical_ml" = "logistic reg.")) |>
+  mutate(group_col = recode(group_col, 'pres_party' = 'party', 'ISO_A3' = 'country_3', 'country_iso' = 'country', 'parfam_text' = 'party_fam')) |>
+  mutate(dataset = recode(dataset, 'cap-merge' = 'CAP-2', 'cap-sotu' = 'CAP-SotU', 'coronanet' = 'CoronaNet', 'pimpo' = 'PImPo')) |>
   mutate(training_run = file_name) 
-  
 
-
-# The ordering here decides which method is the reference method
+# The ordering here decides which method is the reference method/intercept
 # take BERT-NLI as reference category, since main argument in paper is about NLI.
 d$classifier <- factor(as.factor(d$classifier), levels = c("BERT-NLI", "BERT-NLI-void", "BERT-base", "logistic reg."))
 
@@ -73,20 +73,12 @@ plot_grid(plots, tags=rep('', length(plots)))
 
 ### single model with intercept
 # not used in paper
+#m_single = glmer(error ~ classifier*biased_row + (1 | training_run), family=binomial, data=d)
+#tab_model(m_single)
+#summary(m_single)
+#plot_single <- plot_model(m_single, type='pred', terms=c('classifier','biased_row'))
+#plot_single
 
-m_single = glmer(error ~ classifier*biased_row + (1 | training_run), family=binomial, data=d)
-tab_model(m_single)
-summary(m_single)
-plot_single <- plot_model(m_single, type='pred', terms=c('classifier','biased_row'))
-plot_single
-
-
-# export model outputs for paper
-library(stargazer)
-stargazer(m_single, type="text")
-library(broom.mixed)
-tidy_output <- tidy(m_single)
-glance_output <- glance(m_single)
 
 
 

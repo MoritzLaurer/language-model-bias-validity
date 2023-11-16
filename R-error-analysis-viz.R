@@ -16,7 +16,9 @@ d = read_parquet("./results/df_test_concat.parquet.gzip") |>
   # add error column
   mutate(error = as.numeric(label_pred != label_gold)) |>
   # clean classifier names
-  mutate(classifier = recode(method, nli_short = "BERT-NLI", nli_void = "BERT-NLI-void", standard_dl = "BERT-base", "classical_ml" = "logistic reg.")) |>
+  mutate(classifier = recode(method, 'nli_short' = 'BERT-NLI', 'nli_void' = 'BERT-NLI-void', 'standard_dl' = 'BERT-base', 'classical_ml' = 'logistic reg.')) |>
+  mutate(group_col = recode(group_col, 'pres_party' = 'party', 'ISO_A3' = 'country_3', 'country_iso' = 'country', 'parfam_text' = 'party_fam')) |>
+  mutate(dataset = recode(dataset, 'cap-merge' = 'CAP-2', 'cap-sotu' = 'CAP-SotU', 'coronanet' = 'CoronaNet', 'pimpo' = 'PImPo')) |>
   mutate(training_run = file_name) 
 
 
@@ -56,7 +58,7 @@ get_plotdata = function(dataset) {
     add_column(intest="Odds ratio") |>
     bind_rows(pred) |>
     select(-std.error, -group) |>
-    mutate(z=if_else(intest=='Odds ratio', 'Odds ratio of error on\ngroup member seen during training\nvs. unseen group members', 'Probability of making an error ') |> fct_rev(),
+    mutate(z=if_else(intest=='Odds ratio', 'Odds ratio of error on\ngroup seen during training\nvs. unseen groups', 'Probability of making an error ') |> fct_rev(),
            x=fct_reorder(x, predicted))
 }
 
@@ -64,8 +66,7 @@ get_plotdata = function(dataset) {
 p_tot = get_plotdata(d)
 
 # give explicit order to legend
-p_tot$intest <- factor(p_tot$intest, levels = c("No", "Yes", "Odds ratio"))
-
+p_tot$intest <- factor(p_tot$intest, levels = c("Yes", "No", "Odds ratio"))
 
 ## aggregate plot
 ggplot(p_tot, aes(y=x, yend=x, x=predicted, xend=conf.high, color=intest)) + 
@@ -78,8 +79,8 @@ ggplot(p_tot, aes(y=x, yend=x, x=predicted, xend=conf.high, color=intest)) +
   geom_vline(data=filter(p_tot, intest=="Odds ratio") |> add_column(xx=1), 
              mapping=aes(xintercept=xx), color="grey", lty=2) + 
   theme_classic() + 
-  #scale_color_discrete(name="Test text from same group member as training texts?", breaks=c("No", "Yes", "Odds ratio")) + 
-  scale_color_manual(name="Test text from same group member as training texts?", 
+  #scale_color_discrete(name="Test text from same group as training texts?", breaks=c("No", "Yes", "Odds ratio")) + 
+  scale_color_manual(name="Test text from same group as training texts?", 
                      values=c("Yes"="#F8766D", "No"="#619CFF", "Odds ratio"="#00BA38"),
                      breaks=c("Yes", "No", "Odds ratio")) +
   theme(panel.grid.major.y = element_line(),
@@ -105,6 +106,13 @@ dsets = map(unique(d$label), get_plotdata_subset, .progress = TRUE) |> list_rbin
 dsets <- dsets |> mutate(dataset=str_extract(label, "(.*)-", group=1),
                          group=str_extract(label, ".*-(.*)", group=1))
 
+# give explicit order to legend
+dsets$intest <- factor(dsets$intest, levels = c("Yes", "No", "Odds ratio"))
+
+# adjust order of classifiers
+dsets$x <- factor(as.factor(dsets$x), levels = c("BERT-NLI", "BERT-NLI-void", "BERT-base", "logistic reg."))
+
+
 # disaggregated plot
 plot_disaggregated <- ggplot(dsets, aes(y=x, yend=x, x=predicted, xend=conf.high, color=intest)) + 
   geom_point(data=filter(dsets, intest=="Yes"), position=position_nudge(y=.1)) + 
@@ -116,7 +124,10 @@ plot_disaggregated <- ggplot(dsets, aes(y=x, yend=x, x=predicted, xend=conf.high
   geom_vline(data=filter(dsets, intest=="Odds ratio") |> add_column(xx=1), 
              mapping=aes(xintercept=xx), color="grey", lty=2) + 
   theme_classic() + 
-  scale_color_discrete(name="Test data point from group member in training set?") + 
+  #scale_color_discrete(name="Test data point from group in training set?") + 
+  scale_color_manual(name="Test text from same group as training texts?", 
+                     values=c("Yes"="#F8766D", "No"="#619CFF", "Odds ratio"="#00BA38"),
+                     breaks=c("Yes", "No", "Odds ratio")) +
   theme(panel.grid.major.y = element_line(),
         legend.position = "bottom") + 
   xlab("") + 
