@@ -1,0 +1,75 @@
+Terminal execution:  True   (sys.argv[0]:  analysis-classical-run.py )
+Arguments passed via the terminal:
+
+coronanet    dataset
+500    sample_size_train
+None    sample_size_corpus
+20000    sample_size_no_topic
+None    sample_size_test
+classical_ml    method
+log_reg    model
+tfidf    vectorizer
+20231026    study_date
+coronanet    task
+1    n_run
+6    n_random_runs_total
+random3    group_sample
+True    save_outputs
+ISO_A3    group_column
+448    max_length
+Iteration number:  0
+All random seeds:  [7270  860 5390 5191 5734 6265]
+Random seed for this run:  7270
+log_reg
+Dataset:  coronanet 
+
+Overall label distribution per group member:
+ ISO_A3                                          
+AFG     Health Resources                            48
+        Public Awareness Measures                   19
+        Restrictions of Mass Gatherings             17
+        Restriction and Regulation of Businesses    12
+AGO     Health Resources                            34
+                                                    ..
+ZMB     Restriction and Regulation of Businesses     1
+ZWE     Restriction and Regulation of Businesses     8
+        Restrictions of Mass Gatherings              8
+        Health Resources                             8
+        Public Awareness Measures                    1
+Name: label_text, Length: 701, dtype: int64
+Group selected: ['CZE', 'GRC', 'KEN']  for seed 7270
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Health Resources                            37
+Restriction and Regulation of Businesses    16
+Public Awareness Measures                   15
+Restrictions of Mass Gatherings              7
+Name: label_text, dtype: int64
+Group selected: ['BRA', 'JPN', 'CHN']  for seed 7312
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Health Resources                            125
+Public Awareness Measures                   125
+Restriction and Regulation of Businesses    125
+Restrictions of Mass Gatherings             125
+Name: label_text, dtype: int64
+
+FINAL DF_TRAIN SAMPLE (BALANCED) for group \bBRA\b|\bJPN\b|\bCHN\b:
+df_train.label_text.value_counts:
+ Health Resources                            125
+Public Awareness Measures                   125
+Restriction and Regulation of Businesses    125
+Restrictions of Mass Gatherings             125
+Name: label_text, dtype: int64
+Spacy lemmatization done
+
+Train time: 0.08655858039855957 
+
+Aggregate metrics:  {'eval_f1_macro': 0.7223185365402531, 'eval_f1_micro': 0.7359081419624217, 'eval_accuracy_balanced': 0.7201447333820222, 'eval_accuracy_not_b': 0.7359081419624217, 'eval_precision_macro': 0.7318300878581219, 'eval_recall_macro': 0.7201447333820222, 'eval_precision_micro': 0.7359081419624217, 'eval_recall_micro': 0.7359081419624217}
+Detailed metrics:  {'Health Resources': {'precision': 0.848349687778769, 'recall': 0.7383540372670807, 'f1-score': 0.7895392278953923, 'support': 1288}, 'Public Awareness Measures': {'precision': 0.6488188976377953, 'recall': 0.6232980332829047, 'f1-score': 0.6358024691358024, 'support': 661}, 'Restriction and Regulation of Businesses': {'precision': 0.6751085383502171, 'recall': 0.8375224416517055, 'f1-score': 0.7475961538461539, 'support': 1114}, 'Restrictions of Mass Gatherings': {'precision': 0.7550432276657061, 'recall': 0.6814044213263979, 'f1-score': 0.7163362952836638, 'support': 769}, 'accuracy': 0.7359081419624217, 'macro avg': {'precision': 0.7318300878581219, 'recall': 0.7201447333820222, 'f1-score': 0.7223185365402531, 'support': 3832}, 'weighted avg': {'precision': 0.7448441657084308, 'recall': 0.7359081419624217, 'f1-score': 0.7361369217342858, 'support': 3832}} 
+
+
+Test results:
+{'eval_f1_macro': 0.7223185365402531, 'eval_f1_micro': 0.7359081419624217, 'eval_accuracy_balanced': 0.7201447333820222, 'eval_accuracy_not_b': 0.7359081419624217, 'eval_precision_macro': 0.7318300878581219, 'eval_recall_macro': 0.7201447333820222, 'eval_precision_micro': 0.7359081419624217, 'eval_recall_micro': 0.7359081419624217}
+
+Script done.
+
+

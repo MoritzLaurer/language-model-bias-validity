@@ -1,0 +1,337 @@
+Terminal execution:  True   (sys.argv[0]:  analysis-transformers-run.py )
+Arguments passed via the terminal:
+
+coronanet    dataset
+500    sample_size_train
+None    sample_size_corpus
+20000    sample_size_no_topic
+None    sample_size_test
+nli_short    method
+MoritzLaurer/deberta-v3-base-zeroshot-v1    model
+transformer    vectorizer
+20231026    study_date
+coronanet    task
+2    n_run
+6    n_random_runs_total
+random3    group_sample
+True    save_outputs
+ISO_A3    group_column
+448    max_length
+Iteration number:  1
+All random seeds:  [7270  860 5390 5191 5734 6265]
+Random seed for this run:  860
+deberta-v3-base-zeroshot-v
+Dataset:  coronanet 
+
+Overall label distribution per group member:
+ ISO_A3                                          
+AFG     Health Resources                            48
+        Public Awareness Measures                   19
+        Restrictions of Mass Gatherings             17
+        Restriction and Regulation of Businesses    12
+AGO     Health Resources                            34
+                                                    ..
+ZMB     Restriction and Regulation of Businesses     1
+ZWE     Restriction and Regulation of Businesses     8
+        Restrictions of Mass Gatherings              8
+        Health Resources                             8
+        Public Awareness Measures                    1
+Name: label_text, Length: 701, dtype: int64
+Group selected: ['PRY', 'NZL', 'VNM']  for seed 860
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Health Resources                            60
+Restrictions of Mass Gatherings             23
+Public Awareness Measures                   19
+Restriction and Regulation of Businesses    18
+Name: label_text, dtype: int64
+Group selected: ['OMN', 'EST', 'XKX']  for seed 902
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Restriction and Regulation of Businesses    34
+Health Resources                            13
+Public Awareness Measures                   13
+Restrictions of Mass Gatherings             13
+Name: label_text, dtype: int64
+Group selected: ['CAN', 'TUN', 'BEL']  for seed 944
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Restrictions of Mass Gatherings             122
+Restriction and Regulation of Businesses     80
+Health Resources                             64
+Public Awareness Measures                    24
+Name: label_text, dtype: int64
+Group selected: ['VEN', 'AUS', 'BIH']  for seed 986
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Health Resources                            125
+Restriction and Regulation of Businesses     56
+Restrictions of Mass Gatherings              48
+Public Awareness Measures                    43
+Name: label_text, dtype: int64
+Group selected: ['CIV', 'BHS', 'GRC']  for seed 1028
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Health Resources                            51
+Public Awareness Measures                   20
+Restriction and Regulation of Businesses    12
+Restrictions of Mass Gatherings              7
+Name: label_text, dtype: int64
+Group selected: ['JAM', 'SWZ', 'LKA']  for seed 1070
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Health Resources                            21
+Restriction and Regulation of Businesses    18
+Restrictions of Mass Gatherings             18
+Public Awareness Measures                   10
+Name: label_text, dtype: int64
+Group selected: ['TUR', 'MEX', 'COL']  for seed 1112
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Restriction and Regulation of Businesses    93
+Health Resources                            68
+Restrictions of Mass Gatherings             43
+Public Awareness Measures                   32
+Name: label_text, dtype: int64
+Group selected: ['AND', 'MDG', 'MKD']  for seed 1154
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Restriction and Regulation of Businesses    21
+Restrictions of Mass Gatherings             14
+Health Resources                            10
+Public Awareness Measures                    4
+Name: label_text, dtype: int64
+Group selected: ['KWT', 'LUX', 'MAR']  for seed 1196
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Health Resources                            25
+Restriction and Regulation of Businesses    20
+Restrictions of Mass Gatherings             16
+Public Awareness Measures                    9
+Name: label_text, dtype: int64
+Group selected: ['MDG', 'VUT', 'ARE']  for seed 1238
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Restrictions of Mass Gatherings             23
+Restriction and Regulation of Businesses    21
+Health Resources                            20
+Public Awareness Measures                   10
+Name: label_text, dtype: int64
+Group selected: ['LCA', 'BIH', 'GBR']  for seed 1280
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Health Resources                            54
+Restriction and Regulation of Businesses    25
+Restrictions of Mass Gatherings             23
+Public Awareness Measures                   21
+Name: label_text, dtype: int64
+Group selected: ['TWN', 'HKG', 'QAT']  for seed 1322
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Restriction and Regulation of Businesses    81
+Health Resources                            49
+Public Awareness Measures                   35
+Restrictions of Mass Gatherings             18
+Name: label_text, dtype: int64
+Group selected: ['MOZ', 'NIC', 'ZWE']  for seed 1364
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Health Resources                            13
+Restrictions of Mass Gatherings             12
+Restriction and Regulation of Businesses     8
+Public Awareness Measures                    2
+Name: label_text, dtype: int64
+Group selected: ['CMR', 'ZMB', 'GNB']  for seed 1406
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Health Resources                            13
+Public Awareness Measures                    7
+Restriction and Regulation of Businesses     7
+Restrictions of Mass Gatherings              5
+Name: label_text, dtype: int64
+Group selected: ['DNK', 'KHM', 'LBN']  for seed 1448
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Restriction and Regulation of Businesses    40
+Health Resources                            14
+Restrictions of Mass Gatherings             14
+Public Awareness Measures                    9
+Name: label_text, dtype: int64
+Group selected: ['BRB', 'MLT', 'VEN']  for seed 1490
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Health Resources                            55
+Restriction and Regulation of Businesses    15
+Restrictions of Mass Gatherings             10
+Public Awareness Measures                    8
+Name: label_text, dtype: int64
+Group selected: ['CRI', 'SWE', 'HKG']  for seed 1532
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Restriction and Regulation of Businesses    61
+Public Awareness Measures                   29
+Health Resources                            26
+Restrictions of Mass Gatherings             21
+Name: label_text, dtype: int64
+Group selected: ['GTM', 'PRY', 'MRT']  for seed 1574
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Health Resources                            27
+Public Awareness Measures                   20
+Restrictions of Mass Gatherings             14
+Restriction and Regulation of Businesses    13
+Name: label_text, dtype: int64
+Group selected: ['ISL', 'SDN', 'NZL']  for seed 1616
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Health Resources                            55
+Restrictions of Mass Gatherings             36
+Restriction and Regulation of Businesses    31
+Public Awareness Measures                   21
+Name: label_text, dtype: int64
+Group selected: ['NER', 'PRK', 'BEN']  for seed 1658
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Health Resources                            19
+Public Awareness Measures                   18
+Restrictions of Mass Gatherings             10
+Restriction and Regulation of Businesses     5
+Name: label_text, dtype: int64
+Group selected: ['LTU', 'BLZ', 'MAR']  for seed 1700
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Health Resources                            25
+Restriction and Regulation of Businesses    15
+Public Awareness Measures                   13
+Restrictions of Mass Gatherings             12
+Name: label_text, dtype: int64
+Group selected: ['DEU', 'URY', 'CZE']  for seed 1742
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Health Resources                            125
+Restriction and Regulation of Businesses    125
+Restrictions of Mass Gatherings             125
+Public Awareness Measures                    59
+Name: label_text, dtype: int64
+Group selected: ['IRQ', 'KEN', 'GAB']  for seed 1784
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Restriction and Regulation of Businesses    28
+Health Resources                            24
+Restrictions of Mass Gatherings             15
+Public Awareness Measures                    6
+Name: label_text, dtype: int64
+Group selected: ['CPV', 'SLE', 'BLZ']  for seed 1826
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Restriction and Regulation of Businesses    12
+Health Resources                             8
+Public Awareness Measures                    6
+Restrictions of Mass Gatherings              6
+Name: label_text, dtype: int64
+Group selected: ['VAT', 'ZAF', 'VCT']  for seed 1868
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Restrictions of Mass Gatherings             16
+Restriction and Regulation of Businesses    15
+Health Resources                            14
+Public Awareness Measures                    2
+Name: label_text, dtype: int64
+Group selected: ['TLS', 'VUT', 'TZA']  for seed 1910
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Health Resources                            16
+Public Awareness Measures                    7
+Restrictions of Mass Gatherings              5
+Restriction and Regulation of Businesses     2
+Name: label_text, dtype: int64
+Group selected: ['MHL', 'JAM', 'BEN']  for seed 1952
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Health Resources                            31
+Public Awareness Measures                   16
+Restriction and Regulation of Businesses     8
+Restrictions of Mass Gatherings              6
+Name: label_text, dtype: int64
+Group selected: ['GTM', 'PRK', 'KIR']  for seed 1994
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Health Resources                            16
+Public Awareness Measures                   13
+Restriction and Regulation of Businesses    10
+Restrictions of Mass Gatherings              8
+Name: label_text, dtype: int64
+Group selected: ['ECU', 'DJI', 'TTO']  for seed 2036
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Restriction and Regulation of Businesses    31
+Health Resources                            28
+Public Awareness Measures                   24
+Restrictions of Mass Gatherings             16
+Name: label_text, dtype: int64
+Group selected: ['KEN', 'BHR', 'IND']  for seed 2078
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Health Resources                            125
+Restriction and Regulation of Businesses    125
+Restrictions of Mass Gatherings             125
+Public Awareness Measures                    93
+Name: label_text, dtype: int64
+Group selected: ['TTO', 'PHL', 'MRT']  for seed 2120
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Public Awareness Measures                   20
+Restrictions of Mass Gatherings             17
+Restriction and Regulation of Businesses    16
+Health Resources                            15
+Name: label_text, dtype: int64
+Group selected: ['FJI', 'THA', 'MLT']  for seed 2162
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Health Resources                            18
+Public Awareness Measures                   16
+Restriction and Regulation of Businesses    10
+Restrictions of Mass Gatherings              8
+Name: label_text, dtype: int64
+Group selected: ['IRQ', 'IRN', 'SYR']  for seed 2204
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Health Resources                            18
+Restrictions of Mass Gatherings             16
+Restriction and Regulation of Businesses    15
+Public Awareness Measures                    6
+Name: label_text, dtype: int64
+Group selected: ['SMR', 'KIR', 'IND']  for seed 2246
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Health Resources                            125
+Restriction and Regulation of Businesses    125
+Restrictions of Mass Gatherings             125
+Public Awareness Measures                    87
+Name: label_text, dtype: int64
+Group selected: ['MDA', 'BGR', 'BEN']  for seed 2288
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Health Resources                            35
+Restrictions of Mass Gatherings             34
+Public Awareness Measures                   20
+Restriction and Regulation of Businesses     8
+Name: label_text, dtype: int64
+Group selected: ['BTN', 'USA', 'ZWE']  for seed 2330
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Health Resources                            125
+Public Awareness Measures                   125
+Restriction and Regulation of Businesses    125
+Restrictions of Mass Gatherings             125
+Name: label_text, dtype: int64
+
+FINAL DF_TRAIN SAMPLE (BALANCED) for group \bBTN\b|\bUSA\b|\bZWE\b:
+df_train.label_text.value_counts:
+ Health Resources                            125
+Public Awareness Measures                   125
+Restriction and Regulation of Businesses    125
+Restrictions of Mass Gatherings             125
+Name: label_text, dtype: int64
+
+For NLI: Augmenting data by adding random not_entail examples to the train set from other classes within the train set.
+Length of df_train before this step is: 500.
+
+Max augmentation can be: len(df_train) * 2 = 1000. Can also be lower, if there are more entail examples than not-entail for a majority class
+For NLI:  not_entail training examples were added, which leads to an augmented training dataset of length 1000.
+Number of hypotheses/classes:  4 
+
+For normal test, N classifications necessary: 3832
+For NLI test, N classifications necessary: 15328
+
+Device: cuda
+Map:   0%|          | 0/1000 [00:00<?, ? examples/s]                                                    Map:   0%|          | 0/15328 [00:00<?, ? examples/s]Map:  20%|█▉        | 3000/15328 [00:00<00:00, 19348.98 examples/s]Map:  39%|███▉      | 6000/15328 [00:00<00:00, 19868.97 examples/s]Map:  65%|██████▌   | 10000/15328 [00:00<00:00, 20162.83 examples/s]Map:  91%|█████████▏| 14000/15328 [00:00<00:00, 16491.14 examples/s]                                                                      0%|          | 0/224 [00:00<?, ?it/s]You're using a DebertaV2TokenizerFast tokenizer. Please note that with a fast tokenizer, using the `__call__` method is faster than using a method to encode the text followed by a call to the `pad` method to get a padded encoding.
+  0%|          | 1/224 [00:00<00:38,  5.85it/s]  1%|          | 2/224 [00:00<00:32,  6.76it/s]  1%|▏         | 3/224 [00:00<00:30,  7.26it/s]  2%|▏         | 4/224 [00:00<00:31,  6.93it/s]  2%|▏         | 5/224 [00:00<00:31,  7.05it/s]  3%|▎         | 6/224 [00:00<00:29,  7.45it/s]  3%|▎         | 7/224 [00:00<00:29,  7.33it/s]  4%|▎         | 8/224 [00:01<00:29,  7.38it/s]  4%|▍         | 9/224 [00:01<00:31,  6.90it/s]  4%|▍         | 10/224 [00:01<00:31,  6.85it/s]  5%|▍         | 11/224 [00:01<00:30,  6.87it/s]  5%|▌         | 12/224 [00:01<00:31,  6.69it/s]  6%|▌         | 13/224 [00:01<00:30,  6.88it/s]  6%|▋         | 14/224 [00:02<00:30,  6.84it/s]  7%|▋         | 15/224 [00:02<00:31,  6.67it/s]  7%|▋         | 16/224 [00:02<00:29,  7.16it/s]  8%|▊         | 17/224 [00:02<00:30,  6.75it/s]  8%|▊         | 18/224 [00:02<00:30,  6.86it/s]  8%|▊         | 19/224 [00:02<00:29,  6.94it/s]  9%|▉         | 20/224 [00:02<00:29,  6.86it/s]  9%|▉         | 21/224 [00:03<00:28,  7.15it/s] 10%|▉         | 22/224 [00:03<00:29,  6.74it/s] 10%|█         | 23/224 [00:03<00:27,  7.35it/s] 11%|█         | 24/224 [00:03<00:27,  7.25it/s] 11%|█         | 25/224 [00:03<00:27,  7.25it/s] 12%|█▏        | 26/224 [00:03<00:27,  7.29it/s] 12%|█▏        | 27/224 [00:03<00:27,  7.23it/s] 12%|█▎        | 28/224 [00:04<00:28,  6.94it/s] 13%|█▎        | 29/224 [00:04<00:28,  6.82it/s] 13%|█▎        | 30/224 [00:04<00:29,  6.66it/s] 14%|█▍        | 31/224 [00:04<00:26,  7.20it/s]                                                 14%|█▍        | 32/224 [00:04<00:26,  7.20it/s] 15%|█▍        | 33/224 [00:04<00:24,  7.93it/s] 15%|█▌        | 34/224 [00:04<00:25,  7.57it/s] 16%|█▌        | 36/224 [00:05<00:23,  7.97it/s] 17%|█▋        | 37/224 [00:05<00:24,  7.58it/s] 17%|█▋        | 38/224 [00:05<00:25,  7.16it/s] 17%|█▋        | 39/224 [00:05<00:25,  7.27it/s] 18%|█▊        | 40/224 [00:05<00:26,  6.99it/s] 18%|█▊        | 41/224 [00:05<00:26,  6.78it/s] 19%|█▉        | 42/224 [00:05<00:26,  6.78it/s] 19%|█▉        | 43/224 [00:06<00:26,  6.85it/s] 20%|█▉        | 44/224 [00:06<00:25,  6.99it/s] 20%|██        | 45/224 [00:06<00:24,  7.34it/s] 21%|██        | 46/224 [00:06<00:24,  7.20it/s] 21%|██        | 47/224 [00:06<00:24,  7.22it/s] 21%|██▏       | 48/224 [00:06<00:24,  7.16it/s] 22%|██▏       | 49/224 [00:06<00:24,  7.18it/s] 22%|██▏       | 50/224 [00:07<00:23,  7.40it/s] 23%|██▎       | 51/224 [00:07<00:25,  6.90it/s] 23%|██▎       | 52/224 [00:07<00:24,  7.03it/s] 24%|██▎       | 53/224 [00:07<00:23,  7.39it/s] 24%|██▍       | 54/224 [00:07<00:23,  7.31it/s] 25%|██▍       | 55/224 [00:07<00:23,  7.25it/s] 25%|██▌       | 56/224 [00:07<00:23,  7.27it/s] 25%|██▌       | 57/224 [00:08<00:22,  7.36it/s] 26%|██▌       | 58/224 [00:08<00:21,  7.62it/s] 26%|██▋       | 59/224 [00:08<00:21,  7.81it/s] 27%|██▋       | 60/224 [00:08<00:22,  7.28it/s] 27%|██▋       | 61/224 [00:08<00:21,  7.51it/s] 28%|██▊       | 62/224 [00:08<00:23,  6.96it/s] 28%|██▊       | 63/224 [00:08<00:24,  6.65it/s]                                                 29%|██▊       | 64/224 [00:08<00:24,  6.65it/s] 29%|██▉       | 65/224 [00:09<00:21,  7.38it/s] 29%|██▉       | 66/224 [00:09<00:21,  7.21it/s] 30%|██▉       | 67/224 [00:09<00:21,  7.19it/s] 30%|███       | 68/224 [00:09<00:21,  7.19it/s] 31%|███       | 69/224 [00:09<00:22,  6.80it/s] 31%|███▏      | 70/224 [00:09<00:22,  6.94it/s] 32%|███▏      | 71/224 [00:09<00:21,  7.09it/s] 32%|███▏      | 72/224 [00:10<00:20,  7.32it/s] 33%|███▎      | 73/224 [00:10<00:21,  7.08it/s] 33%|███▎      | 74/224 [00:10<00:21,  6.83it/s] 33%|███▎      | 75/224 [00:10<00:21,  7.02it/s] 34%|███▍      | 76/224 [00:10<00:20,  7.09it/s] 34%|███▍      | 77/224 [00:10<00:20,  7.04it/s] 35%|███▍      | 78/224 [00:10<00:20,  7.21it/s] 35%|███▌      | 79/224 [00:11<00:20,  7.21it/s] 36%|███▌      | 80/224 [00:11<00:20,  7.18it/s] 36%|███▌      | 81/224 [00:11<00:21,  6.79it/s] 37%|███▋      | 82/224 [00:11<00:20,  6.79it/s] 37%|███▋      | 83/224 [00:11<00:19,  7.15it/s] 38%|███▊      | 84/224 [00:11<00:20,  6.87it/s] 38%|███▊      | 85/224 [00:11<00:20,  6.70it/s] 38%|███▊      | 86/224 [00:12<00:20,  6.82it/s] 39%|███▉      | 87/224 [00:12<00:20,  6.53it/s] 39%|███▉      | 88/224 [00:12<00:21,  6.39it/s] 40%|███▉      | 89/224 [00:12<00:21,  6.37it/s] 40%|████      | 90/224 [00:12<00:19,  6.77it/s] 41%|████      | 91/224 [00:12<00:19,  6.97it/s] 41%|████      | 92/224 [00:13<00:18,  6.97it/s] 42%|████▏     | 93/224 [00:13<00:18,  7.08it/s] 42%|████▏     | 94/224 [00:13<00:17,  7.63it/s] 42%|████▏     | 95/224 [00:13<00:16,  7.84it/s]                                                 43%|████▎     | 96/224 [00:13<00:16,  7.84it/s] 43%|████▎     | 97/224 [00:13<00:15,  8.05it/s] 44%|████▍     | 98/224 [00:13<00:16,  7.87it/s] 44%|████▍     | 99/224 [00:13<00:16,  7.45it/s] 45%|████▍     | 100/224 [00:14<00:16,  7.59it/s] 45%|████▌     | 101/224 [00:14<00:16,  7.41it/s] 46%|████▌     | 102/224 [00:14<00:17,  6.93it/s] 46%|████▌     | 103/224 [00:14<00:17,  6.86it/s] 46%|████▋     | 104/224 [00:14<00:17,  6.82it/s] 47%|████▋     | 105/224 [00:14<00:17,  6.84it/s] 47%|████▋     | 106/224 [00:14<00:16,  6.96it/s] 48%|████▊     | 107/224 [00:15<00:16,  7.11it/s] 48%|████▊     | 108/224 [00:15<00:16,  7.10it/s] 49%|████▊     | 109/224 [00:15<00:17,  6.72it/s] 49%|████▉     | 110/224 [00:15<00:16,  7.05it/s] 50%|████▉     | 111/224 [00:15<00:15,  7.17it/s] 50%|█████     | 112/224 [00:15<00:16,  6.79it/s] 50%|█████     | 113/224 [00:15<00:15,  7.01it/s] 51%|█████     | 114/224 [00:16<00:15,  7.31it/s] 51%|█████▏    | 115/224 [00:16<00:15,  6.98it/s] 52%|█████▏    | 116/224 [00:16<00:15,  6.93it/s] 52%|█████▏    | 117/224 [00:16<00:15,  6.73it/s] 53%|█████▎    | 118/224 [00:16<00:15,  7.06it/s] 53%|█████▎    | 119/224 [00:16<00:14,  7.11it/s] 54%|█████▎    | 120/224 [00:16<00:15,  6.85it/s] 54%|█████▍    | 121/224 [00:17<00:14,  7.23it/s] 54%|█████▍    | 122/224 [00:17<00:14,  6.85it/s] 55%|█████▍    | 123/224 [00:17<00:14,  6.76it/s] 55%|█████▌    | 124/224 [00:17<00:14,  6.75it/s] 56%|█████▌    | 125/224 [00:17<00:13,  7.38it/s] 57%|█████▋    | 127/224 [00:17<00:11,  8.54it/s]                                                  57%|█████▋    | 128/224 [00:17<00:11,  8.54it/s] 58%|█████▊    | 129/224 [00:18<00:10,  8.69it/s] 58%|█████▊    | 130/224 [00:18<00:11,  7.92it/s] 58%|█████▊    | 131/224 [00:18<00:12,  7.62it/s] 59%|█████▉    | 132/224 [00:18<00:12,  7.49it/s] 59%|█████▉    | 133/224 [00:18<00:11,  7.85it/s] 60%|█████▉    | 134/224 [00:18<00:11,  7.62it/s] 60%|██████    | 135/224 [00:18<00:12,  7.19it/s] 61%|██████    | 136/224 [00:19<00:12,  6.92it/s] 61%|██████    | 137/224 [00:19<00:12,  7.02it/s] 62%|██████▏   | 138/224 [00:19<00:12,  7.01it/s] 62%|██████▏   | 139/224 [00:19<00:11,  7.09it/s] 62%|██████▎   | 140/224 [00:19<00:12,  6.77it/s] 63%|██████▎   | 141/224 [00:19<00:12,  6.82it/s] 63%|██████▎   | 142/224 [00:19<00:12,  6.71it/s] 64%|██████▍   | 143/224 [00:20<00:11,  6.93it/s] 64%|██████▍   | 144/224 [00:20<00:11,  6.73it/s] 65%|██████▍   | 145/224 [00:20<00:11,  6.87it/s] 65%|██████▌   | 146/224 [00:20<00:11,  6.97it/s] 66%|██████▌   | 147/224 [00:20<00:10,  7.04it/s] 66%|██████▌   | 148/224 [00:20<00:10,  7.03it/s] 67%|██████▋   | 149/224 [00:20<00:10,  7.29it/s] 67%|██████▋   | 150/224 [00:21<00:10,  6.97it/s] 67%|██████▋   | 151/224 [00:21<00:10,  7.06it/s] 68%|██████▊   | 152/224 [00:21<00:10,  7.07it/s] 68%|██████▊   | 153/224 [00:21<00:10,  6.70it/s] 69%|██████▉   | 154/224 [00:21<00:09,  7.03it/s] 69%|██████▉   | 155/224 [00:21<00:10,  6.68it/s] 70%|██████▉   | 156/224 [00:21<00:10,  6.69it/s] 70%|███████   | 157/224 [00:22<00:09,  6.73it/s] 71%|███████   | 158/224 [00:22<00:09,  6.80it/s] 71%|███████   | 159/224 [00:22<00:09,  6.96it/s]                                                  71%|███████▏  | 160/224 [00:22<00:09,  6.96it/s] 72%|███████▏  | 161/224 [00:22<00:08,  7.72it/s] 72%|███████▏  | 162/224 [00:22<00:07,  7.77it/s] 73%|███████▎  | 163/224 [00:22<00:08,  7.59it/s] 73%|███████▎  | 164/224 [00:23<00:07,  7.78it/s] 74%|███████▎  | 165/224 [00:23<00:07,  7.70it/s] 74%|███████▍  | 166/224 [00:23<00:08,  7.14it/s] 75%|███████▍  | 167/224 [00:23<00:08,  6.88it/s] 75%|███████▌  | 168/224 [00:23<00:08,  6.99it/s] 75%|███████▌  | 169/224 [00:23<00:08,  6.86it/s] 76%|███████▋  | 171/224 [00:24<00:07,  7.27it/s] 77%|███████▋  | 172/224 [00:24<00:07,  7.06it/s] 77%|███████▋  | 173/224 [00:24<00:07,  7.12it/s] 78%|███████▊  | 174/224 [00:24<00:07,  6.99it/s] 78%|███████▊  | 175/224 [00:24<00:07,  6.92it/s] 79%|███████▊  | 176/224 [00:24<00:07,  6.58it/s] 79%|███████▉  | 177/224 [00:24<00:06,  6.84it/s] 79%|███████▉  | 178/224 [00:25<00:06,  7.15it/s] 80%|███████▉  | 179/224 [00:25<00:06,  7.25it/s] 80%|████████  | 180/224 [00:25<00:06,  7.21it/s] 81%|████████  | 181/224 [00:25<00:06,  7.14it/s] 81%|████████▏ | 182/224 [00:25<00:05,  7.70it/s] 82%|████████▏ | 183/224 [00:25<00:05,  7.57it/s] 82%|████████▏ | 184/224 [00:25<00:05,  7.39it/s] 83%|████████▎ | 185/224 [00:25<00:05,  7.56it/s] 83%|████████▎ | 186/224 [00:26<00:05,  6.99it/s] 83%|████████▎ | 187/224 [00:26<00:05,  7.10it/s] 84%|████████▍ | 188/224 [00:26<00:05,  7.18it/s] 84%|████████▍ | 189/224 [00:26<00:04,  7.31it/s] 85%|████████▍ | 190/224 [00:26<00:04,  7.50it/s] 85%|████████▌ | 191/224 [00:26<00:04,  7.11it/s]                                                  86%|████████▌ | 192/224 [00:26<00:04,  7.11it/s] 86%|████████▌ | 193/224 [00:27<00:03,  7.86it/s] 87%|████████▋ | 194/224 [00:27<00:04,  7.32it/s] 87%|████████▋ | 195/224 [00:27<00:03,  7.78it/s] 88%|████████▊ | 196/224 [00:27<00:03,  8.08it/s] 88%|████████▊ | 197/224 [00:27<00:03,  7.74it/s] 88%|████████▊ | 198/224 [00:27<00:03,  7.12it/s] 89%|████████▉ | 199/224 [00:27<00:03,  7.13it/s] 89%|████████▉ | 200/224 [00:27<00:03,  7.23it/s] 90%|████████▉ | 201/224 [00:28<00:03,  7.17it/s] 90%|█████████ | 202/224 [00:28<00:03,  7.06it/s] 91%|█████████ | 203/224 [00:28<00:02,  7.22it/s] 91%|█████████ | 204/224 [00:28<00:02,  7.53it/s] 92%|█████████▏| 205/224 [00:28<00:02,  7.40it/s] 92%|█████████▏| 206/224 [00:28<00:02,  7.68it/s] 92%|█████████▏| 207/224 [00:28<00:02,  7.77it/s] 93%|█████████▎| 208/224 [00:29<00:02,  7.18it/s] 93%|█████████▎| 209/224 [00:29<00:02,  6.90it/s] 94%|█████████▍| 210/224 [00:29<00:02,  6.84it/s] 94%|█████████▍| 211/224 [00:29<00:01,  6.99it/s] 95%|█████████▌| 213/224 [00:29<00:01,  7.64it/s] 96%|█████████▌| 214/224 [00:29<00:01,  7.44it/s] 96%|█████████▌| 215/224 [00:30<00:01,  7.40it/s] 96%|█████████▋| 216/224 [00:30<00:01,  7.37it/s] 97%|█████████▋| 217/224 [00:30<00:00,  7.53it/s] 97%|█████████▋| 218/224 [00:30<00:00,  7.00it/s] 98%|█████████▊| 219/224 [00:30<00:00,  6.79it/s] 98%|█████████▊| 220/224 [00:30<00:00,  6.95it/s] 99%|█████████▊| 221/224 [00:30<00:00,  7.10it/s] 99%|█████████▉| 222/224 [00:31<00:00,  6.93it/s]100%|█████████▉| 223/224 [00:31<00:00,  7.02it/s]                                                 100%|██████████| 224/224 [00:31<00:00,  7.02it/s]                                                 100%|██████████| 224/224 [00:31<00:00,  7.02it/s]100%|██████████| 224/224 [00:31<00:00,  7.16it/s]
+{'loss': 0.691, 'learning_rate': 1.377777777777778e-05, 'epoch': 1.0}
+{'loss': 0.2986, 'learning_rate': 1.798882681564246e-05, 'epoch': 2.0}
+{'loss': 0.1728, 'learning_rate': 1.4413407821229052e-05, 'epoch': 3.0}
+{'loss': 0.0931, 'learning_rate': 1.0837988826815644e-05, 'epoch': 4.0}
+{'loss': 0.0545, 'learning_rate': 7.262569832402235e-06, 'epoch': 5.0}
+{'loss': 0.026, 'learning_rate': 3.687150837988827e-06, 'epoch': 6.0}
+{'loss': 0.0158, 'learning_rate': 1.11731843575419e-07, 'epoch': 7.0}
+{'train_runtime': 31.2723, 'train_samples_per_second': 223.84, 'train_steps_per_second': 7.163, 'train_loss': 0.19310190741504943, 'epoch': 7.0}
+
+Train time: 31.348764419555664 
+
+  0%|          | 0/60 [00:00<?, ?it/s]  3%|▎         | 2/60 [00:00<00:10,  5.47it/s]  5%|▌         | 3/60 [00:00<00:14,  4.05it/s]  7%|▋         | 4/60 [00:01<00:18,  2.98it/s]  8%|▊         | 5/60 [00:01<00:16,  3.30it/s] 10%|█         | 6/60 [00:01<00:15,  3.42it/s] 12%|█▏        | 7/60 [00:01<00:14,  3.54it/s] 13%|█▎        | 8/60 [00:02<00:15,  3.42it/s] 15%|█▌        | 9/60 [00:02<00:15,  3.37it/s] 17%|█▋        | 10/60 [00:02<00:14,  3.38it/s] 18%|█▊        | 11/60 [00:03<00:14,  3.43it/s] 20%|██        | 12/60 [00:03<00:14,  3.25it/s] 22%|██▏       | 13/60 [00:03<00:14,  3.32it/s] 23%|██▎       | 14/60 [00:04<00:14,  3.13it/s] 25%|██▌       | 15/60 [00:04<00:14,  3.01it/s] 27%|██▋       | 16/60 [00:04<00:13,  3.26it/s] 28%|██▊       | 17/60 [00:05<00:13,  3.28it/s] 30%|███       | 18/60 [00:05<00:12,  3.34it/s] 32%|███▏      | 19/60 [00:05<00:11,  3.50it/s] 33%|███▎      | 20/60 [00:05<00:10,  3.65it/s] 35%|███▌      | 21/60 [00:06<00:10,  3.69it/s] 37%|███▋      | 22/60 [00:06<00:09,  3.89it/s] 38%|███▊      | 23/60 [00:06<00:10,  3.47it/s] 40%|████      | 24/60 [00:06<00:10,  3.55it/s] 42%|████▏     | 25/60 [00:07<00:10,  3.42it/s] 43%|████▎     | 26/60 [00:07<00:10,  3.31it/s] 45%|████▌     | 27/60 [00:07<00:09,  3.43it/s] 47%|████▋     | 28/60 [00:08<00:09,  3.26it/s] 48%|████▊     | 29/60 [00:08<00:09,  3.26it/s] 50%|█████     | 30/60 [00:08<00:09,  3.07it/s] 52%|█████▏    | 31/60 [00:09<00:09,  3.13it/s] 53%|█████▎    | 32/60 [00:09<00:08,  3.14it/s] 55%|█████▌    | 33/60 [00:09<00:07,  3.41it/s] 57%|█████▋    | 34/60 [00:10<00:07,  3.43it/s] 58%|█████▊    | 35/60 [00:10<00:07,  3.26it/s] 60%|██████    | 36/60 [00:10<00:07,  3.27it/s] 62%|██████▏   | 37/60 [00:10<00:06,  3.46it/s] 63%|██████▎   | 38/60 [00:11<00:06,  3.62it/s] 65%|██████▌   | 39/60 [00:11<00:06,  3.44it/s] 67%|██████▋   | 40/60 [00:11<00:06,  3.22it/s] 68%|██████▊   | 41/60 [00:12<00:05,  3.39it/s] 70%|███████   | 42/60 [00:12<00:05,  3.60it/s] 72%|███████▏  | 43/60 [00:12<00:05,  3.24it/s] 73%|███████▎  | 44/60 [00:13<00:04,  3.30it/s] 75%|███████▌  | 45/60 [00:13<00:04,  3.58it/s] 77%|███████▋  | 46/60 [00:13<00:03,  3.74it/s] 78%|███████▊  | 47/60 [00:13<00:03,  3.53it/s] 80%|████████  | 48/60 [00:14<00:03,  3.49it/s] 82%|████████▏ | 49/60 [00:14<00:02,  3.82it/s] 83%|████████▎ | 50/60 [00:14<00:02,  3.99it/s] 85%|████████▌ | 51/60 [00:14<00:02,  3.91it/s] 87%|████████▋ | 52/60 [00:15<00:02,  3.67it/s] 88%|████████▊ | 53/60 [00:15<00:01,  3.57it/s] 90%|█████████ | 54/60 [00:15<00:01,  3.32it/s] 92%|█████████▏| 55/60 [00:16<00:01,  3.08it/s] 93%|█████████▎| 56/60 [00:16<00:01,  2.98it/s] 95%|█████████▌| 57/60 [00:16<00:00,  3.10it/s] 97%|█████████▋| 58/60 [00:17<00:00,  3.10it/s] 98%|█████████▊| 59/60 [00:17<00:00,  3.14it/s]100%|██████████| 60/60 [00:17<00:00,  3.31it/s]100%|██████████| 60/60 [00:17<00:00,  3.37it/s]
+Highest probability prediction per premise:  [3, 3, 2, 0, 1, 0, 0, 0, 3, 0, 0, 0, 1, 2, 0, 0, 2, 3, 3, 1]
+Correct labels per premise:  [2, 3, 2, 0, 1, 0, 0, 2, 3, 0, 0, 0, 0, 1, 0, 0, 2, 3, 3, 1]
+Aggregate metrics:  {'f1_macro': 0.8859330557900233, 'f1_micro': 0.8906576200417536, 'accuracy_balanced': 0.8922206360052438, 'accuracy_not_b': 0.8906576200417536, 'precision_macro': 0.8812949775544638, 'recall_macro': 0.8922206360052438, 'precision_micro': 0.8906576200417536, 'recall_micro': 0.8906576200417536}
+Detailed metrics:  {'Health Resources': {'precision': 0.9377022653721683, 'recall': 0.8998447204968945, 'f1-score': 0.9183835182250396, 'support': 1288}, 'Public Awareness Measures': {'precision': 0.8143053645116919, 'recall': 0.8956127080181543, 'f1-score': 0.8530259365994236, 'support': 661}, 'Restriction and Regulation of Businesses': {'precision': 0.9059266227657573, 'recall': 0.8644524236983842, 'f1-score': 0.8847037207165823, 'support': 1114}, 'Restrictions of Mass Gatherings': {'precision': 0.8672456575682382, 'recall': 0.9089726918075423, 'f1-score': 0.8876190476190476, 'support': 769}, 'accuracy': 0.8906576200417536, 'macro avg': {'precision': 0.8812949775544638, 'recall': 0.8922206360052438, 'f1-score': 0.8859330557900233, 'support': 3832}, 'weighted avg': {'precision': 0.8930403267673827, 'recall': 0.8906576200417536, 'f1-score': 0.8911448611856446, 'support': 3832}} 
+
+
+Test results:
+{'eval_loss': 0.3929683268070221, 'eval_f1_macro': 0.8859330557900233, 'eval_f1_micro': 0.8906576200417536, 'eval_accuracy_balanced': 0.8922206360052438, 'eval_accuracy_not_b': 0.8906576200417536, 'eval_precision_macro': 0.8812949775544638, 'eval_recall_macro': 0.8922206360052438, 'eval_precision_micro': 0.8906576200417536, 'eval_recall_micro': 0.8906576200417536, 'eval_runtime': 18.1473, 'eval_samples_per_second': 844.645, 'eval_steps_per_second': 3.306, 'epoch': 7.0}
+
+Script done.
+
+

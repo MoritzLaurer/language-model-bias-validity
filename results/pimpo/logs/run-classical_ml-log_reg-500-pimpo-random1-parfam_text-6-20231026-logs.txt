@@ -1,0 +1,97 @@
+Terminal execution:  True   (sys.argv[0]:  analysis-classical-run.py )
+Arguments passed via the terminal:
+
+pimpo    dataset
+500    sample_size_train
+None    sample_size_corpus
+20000    sample_size_no_topic
+None    sample_size_test
+classical_ml    method
+log_reg    model
+tfidf    vectorizer
+20231026    study_date
+pimpo-simple    task
+6    n_run
+6    n_random_runs_total
+random1    group_sample
+True    save_outputs
+parfam_text    group_column
+448    max_length
+Iteration number:  5
+All random seeds:  [7270  860 5390 5191 5734 6265]
+Random seed for this run:  6265
+log_reg
+Dataset:  pimpo 
+
+Overall label distribution per group member:
+ parfam_text            
+AGR          no_topic       4420
+             supportive      143
+             sceptical        30
+             neutral          11
+CHR          no_topic      11553
+             supportive      751
+             sceptical       331
+             neutral         150
+CON          no_topic       9524
+             supportive      374
+             sceptical       154
+             neutral          74
+ECO          no_topic       8779
+             supportive      862
+             neutral          80
+             sceptical        75
+ETH          no_topic       5225
+             supportive      141
+             neutral          54
+             sceptical        41
+LEF          no_topic       9367
+             supportive      654
+             neutral         106
+             sceptical        92
+LIB          no_topic       9160
+             supportive      619
+             sceptical       200
+             neutral         114
+NAT          no_topic       5047
+             sceptical       633
+             supportive      167
+             neutral          85
+SIP          no_topic       3036
+             supportive       90
+             sceptical        71
+             neutral          10
+SOC          no_topic      13889
+             supportive      789
+             sceptical       173
+             neutral          94
+Name: label_text, dtype: int64
+Group selected: ['CHR']  for seed 6265
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ no_topic      300
+neutral        66
+sceptical      66
+supportive     66
+Name: label_text, dtype: int64
+
+FINAL DF_TRAIN SAMPLE (BALANCED) for group \bCHR\b:
+df_train.label_text.value_counts:
+ no_topic      300
+neutral        66
+sceptical      66
+supportive     66
+Name: label_text, dtype: int64
+Spacy lemmatization done
+
+Train time: 0.07577061653137207 
+
+Aggregate metrics:  {'eval_f1_macro': 0.3470883709123388, 'eval_f1_micro': 0.6532685512367491, 'eval_accuracy_balanced': 0.37154567470696503, 'eval_accuracy_not_b': 0.6532685512367491, 'eval_precision_macro': 0.3623360791599852, 'eval_recall_macro': 0.37154567470696503, 'eval_precision_micro': 0.6532685512367491, 'eval_recall_micro': 0.6532685512367491}
+Detailed metrics:  {'neutral': {'precision': 0.06467661691542288, 'recall': 0.26666666666666666, 'f1-score': 0.1041041041041041, 'support': 195}, 'no_topic': {'precision': 0.8416666666666667, 'recall': 0.808, 'f1-score': 0.8244897959183675, 'support': 5000}, 'sceptical': {'precision': 0.16942148760330578, 'recall': 0.18222222222222223, 'f1-score': 0.17558886509635974, 'support': 450}, 'supportive': {'precision': 0.37357954545454547, 'recall': 0.22929380993897122, 'f1-score': 0.284170718530524, 'support': 1147}, 'accuracy': 0.6532685512367491, 'macro avg': {'precision': 0.3623360791599852, 'recall': 0.37154567470696503, 'f1-score': 0.3470883709123388, 'support': 6792}, 'weighted avg': {'precision': 0.6957715962440655, 'recall': 0.6532685512367491, 'f1-score': 0.6695683279358083, 'support': 6792}} 
+
+
+Test results:
+{'eval_f1_macro': 0.3470883709123388, 'eval_f1_micro': 0.6532685512367491, 'eval_accuracy_balanced': 0.37154567470696503, 'eval_accuracy_not_b': 0.6532685512367491, 'eval_precision_macro': 0.3623360791599852, 'eval_recall_macro': 0.37154567470696503, 'eval_precision_micro': 0.6532685512367491, 'eval_recall_micro': 0.6532685512367491}
+
+Script done.
+
+

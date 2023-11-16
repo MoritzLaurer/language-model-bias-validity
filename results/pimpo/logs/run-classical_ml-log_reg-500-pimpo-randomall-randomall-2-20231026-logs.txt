@@ -1,0 +1,56 @@
+Terminal execution:  True   (sys.argv[0]:  analysis-classical-run.py )
+Arguments passed via the terminal:
+
+pimpo    dataset
+500    sample_size_train
+None    sample_size_corpus
+20000    sample_size_no_topic
+None    sample_size_test
+classical_ml    method
+log_reg    model
+tfidf    vectorizer
+20231026    study_date
+pimpo-simple    task
+2    n_run
+6    n_random_runs_total
+randomall    group_sample
+True    save_outputs
+randomall    group_column
+448    max_length
+Iteration number:  1
+All random seeds:  [7270  860 5390 5191 5734 6265]
+Random seed for this run:  860
+log_reg
+Dataset:  pimpo 
+
+Overall label distribution per group member:
+ No group used. Sampling with randomall.
+GROUP_SAMPLE is randomall, so just sampling from entire corpus without group selection
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ no_topic      300
+neutral        66
+sceptical      66
+supportive     66
+Name: label_text, dtype: int64
+
+FINAL DF_TRAIN SAMPLE (BALANCED) for group randomall:
+df_train.label_text.value_counts:
+ no_topic      300
+neutral        66
+sceptical      66
+supportive     66
+Name: label_text, dtype: int64
+Spacy lemmatization done
+
+Train time: 0.07086968421936035 
+
+Aggregate metrics:  {'eval_f1_macro': 0.3260634340868436, 'eval_f1_micro': 0.6166077738515902, 'eval_accuracy_balanced': 0.3466992216782539, 'eval_accuracy_not_b': 0.6166077738515902, 'eval_precision_macro': 0.33117909396011996, 'eval_recall_macro': 0.3466992216782539, 'eval_precision_micro': 0.6166077738515902, 'eval_recall_micro': 0.6166077738515902}
+Detailed metrics:  {'neutral': {'precision': 0.037396121883656507, 'recall': 0.13846153846153847, 'f1-score': 0.05888767720828789, 'support': 195}, 'no_topic': {'precision': 0.8327161838379438, 'recall': 0.7646, 'f1-score': 0.7972057136899176, 'support': 5000}, 'sceptical': {'precision': 0.19746121297602257, 'recall': 0.3111111111111111, 'f1-score': 0.24158757549611734, 'support': 450}, 'supportive': {'precision': 0.2571428571428571, 'recall': 0.17262423714036618, 'f1-score': 0.20657276995305163, 'support': 1147}, 'accuracy': 0.6166077738515902, 'macro avg': {'precision': 0.33117909396011996, 'recall': 0.3466992216782539, 'f1-score': 0.3260634340868436, 'support': 6792}, 'weighted avg': {'precision': 0.6705938701323761, 'recall': 0.6166077738515902, 'f1-score': 0.6394530391069799, 'support': 6792}} 
+
+
+Test results:
+{'eval_f1_macro': 0.3260634340868436, 'eval_f1_micro': 0.6166077738515902, 'eval_accuracy_balanced': 0.3466992216782539, 'eval_accuracy_not_b': 0.6166077738515902, 'eval_precision_macro': 0.33117909396011996, 'eval_recall_macro': 0.3466992216782539, 'eval_precision_micro': 0.6166077738515902, 'eval_recall_micro': 0.6166077738515902}
+
+Script done.
+
+

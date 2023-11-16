@@ -1,0 +1,69 @@
+Terminal execution:  True   (sys.argv[0]:  analysis-classical-run.py )
+Arguments passed via the terminal:
+
+coronanet    dataset
+500    sample_size_train
+None    sample_size_corpus
+20000    sample_size_no_topic
+None    sample_size_test
+classical_ml    method
+log_reg    model
+tfidf    vectorizer
+20231026    study_date
+coronanet    task
+1    n_run
+6    n_random_runs_total
+random1    group_sample
+True    save_outputs
+year    group_column
+448    max_length
+Iteration number:  0
+All random seeds:  [7270  860 5390 5191 5734 6265]
+Random seed for this run:  7270
+log_reg
+Dataset:  coronanet 
+
+Overall label distribution per group member:
+ year                                          
+2020  Health Resources                            1731
+      Restriction and Regulation of Businesses    1568
+      Restrictions of Mass Gatherings             1014
+      Public Awareness Measures                    949
+2021  Health Resources                            3395
+      Restriction and Regulation of Businesses    2858
+      Restrictions of Mass Gatherings             2018
+      Public Awareness Measures                   1662
+2022  Restrictions of Mass Gatherings               42
+      Restriction and Regulation of Businesses      32
+      Public Awareness Measures                     31
+      Health Resources                              26
+Name: label_text, dtype: int64
+Group selected: ['2021']  for seed 7270
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Health Resources                            125
+Public Awareness Measures                   125
+Restriction and Regulation of Businesses    125
+Restrictions of Mass Gatherings             125
+Name: label_text, dtype: int64
+
+FINAL DF_TRAIN SAMPLE (BALANCED) for group \b2021\b:
+df_train.label_text.value_counts:
+ Health Resources                            125
+Public Awareness Measures                   125
+Restriction and Regulation of Businesses    125
+Restrictions of Mass Gatherings             125
+Name: label_text, dtype: int64
+Spacy lemmatization done
+
+Train time: 0.07508039474487305 
+
+Aggregate metrics:  {'eval_f1_macro': 0.7330270067914988, 'eval_f1_micro': 0.7403444676409184, 'eval_accuracy_balanced': 0.743835767102719, 'eval_accuracy_not_b': 0.7403444676409185, 'eval_precision_macro': 0.7312854625333594, 'eval_recall_macro': 0.743835767102719, 'eval_precision_micro': 0.7403444676409185, 'eval_recall_micro': 0.7403444676409185}
+Detailed metrics:  {'Health Resources': {'precision': 0.8625363020329139, 'recall': 0.6917701863354038, 'f1-score': 0.7677725118483412, 'support': 1288}, 'Public Awareness Measures': {'precision': 0.5841463414634146, 'recall': 0.7246596066565809, 'f1-score': 0.6468602295746118, 'support': 661}, 'Restriction and Regulation of Businesses': {'precision': 0.7517361111111112, 'recall': 0.77737881508079, 'f1-score': 0.764342453662842, 'support': 1114}, 'Restrictions of Mass Gatherings': {'precision': 0.7267230955259976, 'recall': 0.7815344603381015, 'f1-score': 0.7531328320802004, 'support': 769}, 'accuracy': 0.7403444676409185, 'macro avg': {'precision': 0.7312854625333594, 'recall': 0.743835767102719, 'f1-score': 0.7330270067914988, 'support': 3832}, 'weighted avg': {'precision': 0.7550499939882517, 'recall': 0.7403444676409185, 'f1-score': 0.7429807537211801, 'support': 3832}} 
+
+
+Test results:
+{'eval_f1_macro': 0.7330270067914988, 'eval_f1_micro': 0.7403444676409184, 'eval_accuracy_balanced': 0.743835767102719, 'eval_accuracy_not_b': 0.7403444676409185, 'eval_precision_macro': 0.7312854625333594, 'eval_recall_macro': 0.743835767102719, 'eval_precision_micro': 0.7403444676409185, 'eval_recall_micro': 0.7403444676409185}
+
+Script done.
+
+

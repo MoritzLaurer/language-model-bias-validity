@@ -1,0 +1,299 @@
+Terminal execution:  True   (sys.argv[0]:  analysis-classical-run.py )
+Arguments passed via the terminal:
+
+coronanet    dataset
+500    sample_size_train
+None    sample_size_corpus
+20000    sample_size_no_topic
+None    sample_size_test
+classical_ml    method
+log_reg    model
+tfidf    vectorizer
+20231026    study_date
+coronanet    task
+3    n_run
+6    n_random_runs_total
+random3    group_sample
+True    save_outputs
+ISO_A3    group_column
+448    max_length
+Iteration number:  2
+All random seeds:  [7270  860 5390 5191 5734 6265]
+Random seed for this run:  5390
+log_reg
+Dataset:  coronanet 
+
+Overall label distribution per group member:
+ ISO_A3                                          
+AFG     Health Resources                            48
+        Public Awareness Measures                   19
+        Restrictions of Mass Gatherings             17
+        Restriction and Regulation of Businesses    12
+AGO     Health Resources                            34
+                                                    ..
+ZMB     Restriction and Regulation of Businesses     1
+ZWE     Restriction and Regulation of Businesses     8
+        Restrictions of Mass Gatherings              8
+        Health Resources                             8
+        Public Awareness Measures                    1
+Name: label_text, Length: 701, dtype: int64
+Group selected: ['SVK', 'PSE', 'VAT']  for seed 5390
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Health Resources                            16
+Restriction and Regulation of Businesses    14
+Restrictions of Mass Gatherings              4
+Public Awareness Measures                    3
+Name: label_text, dtype: int64
+Group selected: ['CRI', 'LCA', 'BEL']  for seed 5432
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Restrictions of Mass Gatherings             39
+Restriction and Regulation of Businesses    37
+Health Resources                            17
+Public Awareness Measures                   12
+Name: label_text, dtype: int64
+Group selected: ['MAC', 'PHL', 'BRN']  for seed 5474
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Restrictions of Mass Gatherings             18
+Public Awareness Measures                   17
+Restriction and Regulation of Businesses    14
+Health Resources                            13
+Name: label_text, dtype: int64
+Group selected: ['CHE', 'GTM', 'ATG']  for seed 5516
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Health Resources                            125
+Public Awareness Measures                   125
+Restrictions of Mass Gatherings             125
+Restriction and Regulation of Businesses    113
+Name: label_text, dtype: int64
+Group selected: ['MNE', 'BRN', 'POL']  for seed 5558
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Restrictions of Mass Gatherings             21
+Restriction and Regulation of Businesses    19
+Health Resources                            17
+Public Awareness Measures                   12
+Name: label_text, dtype: int64
+Group selected: ['SYC', 'MAR', 'MUS']  for seed 5600
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Health Resources                            24
+Restriction and Regulation of Businesses     9
+Restrictions of Mass Gatherings              8
+Public Awareness Measures                    7
+Name: label_text, dtype: int64
+Group selected: ['COD', 'ROU', 'STP']  for seed 5642
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Health Resources                            17
+Restriction and Regulation of Businesses    12
+Restrictions of Mass Gatherings             10
+Public Awareness Measures                    2
+Name: label_text, dtype: int64
+Group selected: ['TZA', 'MUS', 'CMR']  for seed 5684
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Health Resources                            15
+Restrictions of Mass Gatherings              6
+Restriction and Regulation of Businesses     4
+Public Awareness Measures                    3
+Name: label_text, dtype: int64
+Group selected: ['TJK', 'HRV', 'SLB']  for seed 5726
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Health Resources                            23
+Restrictions of Mass Gatherings             16
+Restriction and Regulation of Businesses    10
+Public Awareness Measures                    9
+Name: label_text, dtype: int64
+Group selected: ['MDV', 'ITA', 'SVK']  for seed 5768
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Restriction and Regulation of Businesses    125
+Restrictions of Mass Gatherings             107
+Health Resources                             97
+Public Awareness Measures                    81
+Name: label_text, dtype: int64
+Group selected: ['BTN', 'CHN', 'GRC']  for seed 5810
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Health Resources                            125
+Public Awareness Measures                   113
+Restriction and Regulation of Businesses     73
+Restrictions of Mass Gatherings              58
+Name: label_text, dtype: int64
+Group selected: ['KAZ', 'TKM', 'TJK']  for seed 5852
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Restriction and Regulation of Businesses    96
+Health Resources                            71
+Restrictions of Mass Gatherings             61
+Public Awareness Measures                   52
+Name: label_text, dtype: int64
+Group selected: ['SYC', 'BEL', 'XKX']  for seed 5894
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Restrictions of Mass Gatherings             38
+Restriction and Regulation of Businesses    32
+Health Resources                            12
+Public Awareness Measures                    3
+Name: label_text, dtype: int64
+Group selected: ['SSD', 'MDG', 'TLS']  for seed 5936
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Restrictions of Mass Gatherings             19
+Health Resources                            18
+Restriction and Regulation of Businesses    16
+Public Awareness Measures                    8
+Name: label_text, dtype: int64
+Group selected: ['LSO', 'BIH', 'COL']  for seed 5978
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Restriction and Regulation of Businesses    21
+Health Resources                            18
+Public Awareness Measures                   18
+Restrictions of Mass Gatherings             11
+Name: label_text, dtype: int64
+Group selected: ['CMR', 'TZA', 'AZE']  for seed 6020
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Restriction and Regulation of Businesses    26
+Restrictions of Mass Gatherings             18
+Health Resources                            17
+Public Awareness Measures                    5
+Name: label_text, dtype: int64
+Group selected: ['BHS', 'SEN', 'DJI']  for seed 6062
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Public Awareness Measures                   29
+Health Resources                            25
+Restrictions of Mass Gatherings             24
+Restriction and Regulation of Businesses    21
+Name: label_text, dtype: int64
+Group selected: ['SVN', 'VEN', 'OMN']  for seed 6104
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Health Resources                            65
+Restriction and Regulation of Businesses    26
+Public Awareness Measures                   14
+Restrictions of Mass Gatherings             12
+Name: label_text, dtype: int64
+Group selected: ['QAT', 'ZWE', 'KGZ']  for seed 6146
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Restriction and Regulation of Businesses    75
+Health Resources                            52
+Public Awareness Measures                   40
+Restrictions of Mass Gatherings             26
+Name: label_text, dtype: int64
+Group selected: ['OMN', 'TKM', 'BHR']  for seed 6188
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Public Awareness Measures                   29
+Restriction and Regulation of Businesses    28
+Health Resources                            26
+Restrictions of Mass Gatherings             20
+Name: label_text, dtype: int64
+Group selected: ['LUX', 'DZA', 'SMR']  for seed 6230
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Restriction and Regulation of Businesses    51
+Health Resources                            37
+Restrictions of Mass Gatherings             25
+Public Awareness Measures                   18
+Name: label_text, dtype: int64
+Group selected: ['TUN', 'KEN', 'ATG']  for seed 6272
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Public Awareness Measures                   14
+Restriction and Regulation of Businesses    12
+Health Resources                             9
+Restrictions of Mass Gatherings              7
+Name: label_text, dtype: int64
+Group selected: ['ERI', 'TZA', 'HUN']  for seed 6314
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Health Resources                            14
+Restrictions of Mass Gatherings             11
+Restriction and Regulation of Businesses     7
+Public Awareness Measures                    4
+Name: label_text, dtype: int64
+Group selected: ['MYS', 'BLZ', 'KOR']  for seed 6356
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Restrictions of Mass Gatherings             27
+Restriction and Regulation of Businesses    25
+Health Resources                            21
+Public Awareness Measures                   15
+Name: label_text, dtype: int64
+Group selected: ['PER', 'VCT', 'BLZ']  for seed 6398
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Health Resources                            15
+Restriction and Regulation of Businesses    12
+Public Awareness Measures                    9
+Restrictions of Mass Gatherings              7
+Name: label_text, dtype: int64
+Group selected: ['MKD', 'GAB', 'VCT']  for seed 6440
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Health Resources                            16
+Restriction and Regulation of Businesses    13
+Restrictions of Mass Gatherings              8
+Public Awareness Measures                    6
+Name: label_text, dtype: int64
+Group selected: ['UGA', 'IRN', 'CMR']  for seed 6482
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Health Resources                            16
+Public Awareness Measures                   10
+Restrictions of Mass Gatherings              9
+Restriction and Regulation of Businesses     6
+Name: label_text, dtype: int64
+Group selected: ['PAN', 'GBR', 'ZAF']  for seed 6524
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Health Resources                            75
+Restrictions of Mass Gatherings             38
+Restriction and Regulation of Businesses    37
+Public Awareness Measures                   20
+Name: label_text, dtype: int64
+Group selected: ['BEN', 'FRA', 'KAZ']  for seed 6566
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Health Resources                            125
+Restriction and Regulation of Businesses    113
+Public Awareness Measures                    84
+Restrictions of Mass Gatherings              80
+Name: label_text, dtype: int64
+Group selected: ['TCD', 'BGR', 'SDN']  for seed 6608
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Health Resources                            51
+Restrictions of Mass Gatherings             43
+Restriction and Regulation of Businesses    20
+Public Awareness Measures                    8
+Name: label_text, dtype: int64
+Group selected: ['POL', 'ITA', 'HTI']  for seed 6650
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Restriction and Regulation of Businesses    125
+Restrictions of Mass Gatherings             113
+Health Resources                            101
+Public Awareness Measures                    84
+Name: label_text, dtype: int64
+Group selected: ['SDN', 'ZMB', 'ITA']  for seed 6692
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Restriction and Regulation of Businesses    125
+Restrictions of Mass Gatherings             120
+Health Resources                             99
+Public Awareness Measures                    87
+Name: label_text, dtype: int64
+Group selected: ['BRA', 'BHR', 'NGA']  for seed 6734
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Health Resources                            125
+Public Awareness Measures                   125
+Restriction and Regulation of Businesses    125
+Restrictions of Mass Gatherings             112
+Name: label_text, dtype: int64
+Group selected: ['KOR', 'COM', 'JPN']  for seed 6776
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Health Resources                            125
+Public Awareness Measures                   125
+Restriction and Regulation of Businesses    125
+Restrictions of Mass Gatherings             125
+Name: label_text, dtype: int64
+
+FINAL DF_TRAIN SAMPLE (BALANCED) for group \bKOR\b|\bCOM\b|\bJPN\b:
+df_train.label_text.value_counts:
+ Health Resources                            125
+Public Awareness Measures                   125
+Restriction and Regulation of Businesses    125
+Restrictions of Mass Gatherings             125
+Name: label_text, dtype: int64
+Spacy lemmatization done
+
+Train time: 0.09700703620910645 
+
+Aggregate metrics:  {'eval_f1_macro': 0.6489508163244342, 'eval_f1_micro': 0.6649269311064718, 'eval_accuracy_balanced': 0.6574246987940808, 'eval_accuracy_not_b': 0.6649269311064718, 'eval_precision_macro': 0.6526652491671572, 'eval_recall_macro': 0.6574246987940808, 'eval_precision_micro': 0.6649269311064718, 'eval_recall_micro': 0.6649269311064718}
+Detailed metrics:  {'Health Resources': {'precision': 0.7837837837837838, 'recall': 0.7204968944099379, 'f1-score': 0.7508090614886732, 'support': 1288}, 'Public Awareness Measures': {'precision': 0.5574803149606299, 'recall': 0.5355521936459909, 'f1-score': 0.5462962962962963, 'support': 661}, 'Restriction and Regulation of Businesses': {'precision': 0.7209797657082002, 'recall': 0.6077199281867145, 'f1-score': 0.6595226497808085, 'support': 1114}, 'Restrictions of Mass Gatherings': {'precision': 0.5484171322160148, 'recall': 0.7659297789336801, 'f1-score': 0.6391752577319588, 'support': 769}, 'accuracy': 0.6649269311064718, 'macro avg': {'precision': 0.6526652491671572, 'recall': 0.6574246987940808, 'f1-score': 0.6489508163244342, 'support': 3832}, 'weighted avg': {'precision': 0.6792568463923644, 'recall': 0.6649269311064718, 'f1-score': 0.6665913173541128, 'support': 3832}} 
+
+
+Test results:
+{'eval_f1_macro': 0.6489508163244342, 'eval_f1_micro': 0.6649269311064718, 'eval_accuracy_balanced': 0.6574246987940808, 'eval_accuracy_not_b': 0.6649269311064718, 'eval_precision_macro': 0.6526652491671572, 'eval_recall_macro': 0.6574246987940808, 'eval_precision_micro': 0.6649269311064718, 'eval_recall_micro': 0.6649269311064718}
+
+Script done.
+
+

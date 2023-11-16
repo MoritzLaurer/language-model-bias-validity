@@ -1,0 +1,58 @@
+Terminal execution:  True   (sys.argv[0]:  analysis-classical-run.py )
+Arguments passed via the terminal:
+
+cap-sotu    dataset
+500    sample_size_train
+None    sample_size_corpus
+20000    sample_size_no_topic
+None    sample_size_test
+classical_ml    method
+log_reg    model
+tfidf    vectorizer
+20231026    study_date
+cap-sotu    task
+2    n_run
+6    n_random_runs_total
+randomall    group_sample
+True    save_outputs
+randomall    group_column
+448    max_length
+Iteration number:  1
+All random seeds:  [7270  860 5390 5191 5734 6265]
+Random seed for this run:  860
+log_reg
+Dataset:  cap-sotu 
+
+Overall label distribution per group member:
+ No group used. Sampling with randomall.
+GROUP_SAMPLE is randomall, so just sampling from entire corpus without group selection
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Defense                  100
+Government Operations    100
+Health                   100
+International Affairs    100
+Macroeconomics           100
+Name: label_text, dtype: int64
+
+FINAL DF_TRAIN SAMPLE (BALANCED) for group randomall:
+df_train.label_text.value_counts:
+ Defense                  100
+Government Operations    100
+Health                   100
+International Affairs    100
+Macroeconomics           100
+Name: label_text, dtype: int64
+Spacy lemmatization done
+
+Train time: 0.08372306823730469 
+
+Aggregate metrics:  {'eval_f1_macro': 0.42292472679722903, 'eval_f1_micro': 0.44055339386078685, 'eval_accuracy_balanced': 0.44334918599184575, 'eval_accuracy_not_b': 0.44055339386078685, 'eval_precision_macro': 0.4276191733130738, 'eval_recall_macro': 0.44334918599184575, 'eval_precision_micro': 0.44055339386078685, 'eval_recall_micro': 0.44055339386078685}
+Detailed metrics:  {'Defense': {'precision': 0.4134199134199134, 'recall': 0.33217391304347826, 'f1-score': 0.36837029893924783, 'support': 575}, 'Government Operations': {'precision': 0.22739018087855298, 'recall': 0.3963963963963964, 'f1-score': 0.2889983579638752, 'support': 222}, 'Health': {'precision': 0.35127478753541075, 'recall': 0.5254237288135594, 'f1-score': 0.42105263157894735, 'support': 236}, 'International Affairs': {'precision': 0.47344461305007585, 'recall': 0.4928909952606635, 'f1-score': 0.48297213622291024, 'support': 633}, 'Macroeconomics': {'precision': 0.672566371681416, 'recall': 0.46986089644513135, 'f1-score': 0.5532302092811646, 'support': 647}, 'accuracy': 0.44055339386078685, 'macro avg': {'precision': 0.4276191733130738, 'recall': 0.44334918599184575, 'f1-score': 0.42292472679722903, 'support': 2313}, 'weighted avg': {'precision': 0.47814042488907044, 'recall': 0.44055339386078685, 'f1-score': 0.4492002966038457, 'support': 2313}} 
+
+
+Test results:
+{'eval_f1_macro': 0.42292472679722903, 'eval_f1_micro': 0.44055339386078685, 'eval_accuracy_balanced': 0.44334918599184575, 'eval_accuracy_not_b': 0.44055339386078685, 'eval_precision_macro': 0.4276191733130738, 'eval_recall_macro': 0.44334918599184575, 'eval_precision_micro': 0.44055339386078685, 'eval_recall_micro': 0.44055339386078685}
+
+Script done.
+
+

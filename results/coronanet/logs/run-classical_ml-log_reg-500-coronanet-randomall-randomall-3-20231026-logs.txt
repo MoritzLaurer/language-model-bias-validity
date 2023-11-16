@@ -1,0 +1,56 @@
+Terminal execution:  True   (sys.argv[0]:  analysis-classical-run.py )
+Arguments passed via the terminal:
+
+coronanet    dataset
+500    sample_size_train
+None    sample_size_corpus
+20000    sample_size_no_topic
+None    sample_size_test
+classical_ml    method
+log_reg    model
+tfidf    vectorizer
+20231026    study_date
+coronanet    task
+3    n_run
+6    n_random_runs_total
+randomall    group_sample
+True    save_outputs
+randomall    group_column
+448    max_length
+Iteration number:  2
+All random seeds:  [7270  860 5390 5191 5734 6265]
+Random seed for this run:  5390
+log_reg
+Dataset:  coronanet 
+
+Overall label distribution per group member:
+ No group used. Sampling with randomall.
+GROUP_SAMPLE is randomall, so just sampling from entire corpus without group selection
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Health Resources                            125
+Public Awareness Measures                   125
+Restriction and Regulation of Businesses    125
+Restrictions of Mass Gatherings             125
+Name: label_text, dtype: int64
+
+FINAL DF_TRAIN SAMPLE (BALANCED) for group randomall:
+df_train.label_text.value_counts:
+ Health Resources                            125
+Public Awareness Measures                   125
+Restriction and Regulation of Businesses    125
+Restrictions of Mass Gatherings             125
+Name: label_text, dtype: int64
+Spacy lemmatization done
+
+Train time: 0.06474184989929199 
+
+Aggregate metrics:  {'eval_f1_macro': 0.7299063185858378, 'eval_f1_micro': 0.7393006263048018, 'eval_accuracy_balanced': 0.7404493846464906, 'eval_accuracy_not_b': 0.7393006263048016, 'eval_precision_macro': 0.7279808148327069, 'eval_recall_macro': 0.7404493846464906, 'eval_precision_micro': 0.7393006263048016, 'eval_recall_micro': 0.7393006263048016}
+Detailed metrics:  {'Health Resources': {'precision': 0.843501326259947, 'recall': 0.7406832298136646, 'f1-score': 0.7887556841670111, 'support': 1288}, 'Public Awareness Measures': {'precision': 0.5535924617196702, 'recall': 0.7110438729198184, 'f1-score': 0.6225165562913907, 'support': 661}, 'Restriction and Regulation of Businesses': {'precision': 0.7992007992007992, 'recall': 0.718132854578097, 'f1-score': 0.7565011820330969, 'support': 1114}, 'Restrictions of Mass Gatherings': {'precision': 0.7156286721504113, 'recall': 0.7919375812743823, 'f1-score': 0.7518518518518519, 'support': 769}, 'accuracy': 0.7393006263048016, 'macro avg': {'precision': 0.7279808148327069, 'recall': 0.7404493846464906, 'f1-score': 0.7299063185858378, 'support': 3832}, 'weighted avg': {'precision': 0.7549536703060726, 'recall': 0.7393006263048016, 'f1-score': 0.7432977963921356, 'support': 3832}} 
+
+
+Test results:
+{'eval_f1_macro': 0.7299063185858378, 'eval_f1_micro': 0.7393006263048018, 'eval_accuracy_balanced': 0.7404493846464906, 'eval_accuracy_not_b': 0.7393006263048016, 'eval_precision_macro': 0.7279808148327069, 'eval_recall_macro': 0.7404493846464906, 'eval_precision_micro': 0.7393006263048016, 'eval_recall_micro': 0.7393006263048016}
+
+Script done.
+
+

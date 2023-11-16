@@ -1,0 +1,58 @@
+Terminal execution:  True   (sys.argv[0]:  analysis-classical-run.py )
+Arguments passed via the terminal:
+
+cap-merge    dataset
+500    sample_size_train
+None    sample_size_corpus
+20000    sample_size_no_topic
+None    sample_size_test
+classical_ml    method
+log_reg    model
+tfidf    vectorizer
+20231026    study_date
+cap-merge    task
+1    n_run
+6    n_random_runs_total
+randomall    group_sample
+True    save_outputs
+randomall    group_column
+448    max_length
+Iteration number:  0
+All random seeds:  [7270  860 5390 5191 5734 6265]
+Random seed for this run:  7270
+log_reg
+Dataset:  cap-merge 
+
+Overall label distribution per group member:
+ No group used. Sampling with randomall.
+GROUP_SAMPLE is randomall, so just sampling from entire corpus without group selection
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Civil Rights             100
+Domestic Commerce        100
+Government Operations    100
+Labor                    100
+Law and Crime            100
+Name: label_text, dtype: int64
+
+FINAL DF_TRAIN SAMPLE (BALANCED) for group randomall:
+df_train.label_text.value_counts:
+ Civil Rights             100
+Domestic Commerce        100
+Government Operations    100
+Labor                    100
+Law and Crime            100
+Name: label_text, dtype: int64
+Spacy lemmatization done
+
+Train time: 0.18015265464782715 
+
+Aggregate metrics:  {'eval_f1_macro': 0.6259416595886557, 'eval_f1_micro': 0.6317427385892116, 'eval_accuracy_balanced': 0.6403713952245511, 'eval_accuracy_not_b': 0.6317427385892116, 'eval_precision_macro': 0.6217335110717389, 'eval_recall_macro': 0.6403713952245511, 'eval_precision_micro': 0.6317427385892116, 'eval_recall_micro': 0.6317427385892116}
+Detailed metrics:  {'Civil Rights': {'precision': 0.5446685878962536, 'recall': 0.5478260869565217, 'f1-score': 0.546242774566474, 'support': 345}, 'Domestic Commerce': {'precision': 0.5896656534954408, 'recall': 0.7106227106227107, 'f1-score': 0.6445182724252493, 'support': 273}, 'Government Operations': {'precision': 0.49759615384615385, 'recall': 0.6197604790419161, 'f1-score': 0.552, 'support': 334}, 'Labor': {'precision': 0.676737160120846, 'recall': 0.7133757961783439, 'f1-score': 0.6945736434108527, 'support': 314}, 'Law and Crime': {'precision': 0.8, 'recall': 0.6102719033232629, 'f1-score': 0.6923736075407027, 'support': 662}, 'accuracy': 0.6317427385892116, 'macro avg': {'precision': 0.6217335110717389, 'recall': 0.6403713952245511, 'f1-score': 0.6259416595886557, 'support': 1928}, 'weighted avg': {'precision': 0.6520653370804066, 'recall': 0.6317427385892116, 'f1-score': 0.6354889511517009, 'support': 1928}} 
+
+
+Test results:
+{'eval_f1_macro': 0.6259416595886557, 'eval_f1_micro': 0.6317427385892116, 'eval_accuracy_balanced': 0.6403713952245511, 'eval_accuracy_not_b': 0.6317427385892116, 'eval_precision_macro': 0.6217335110717389, 'eval_recall_macro': 0.6403713952245511, 'eval_precision_micro': 0.6317427385892116, 'eval_recall_micro': 0.6317427385892116}
+
+Script done.
+
+

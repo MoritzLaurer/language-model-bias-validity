@@ -1,0 +1,81 @@
+Terminal execution:  True   (sys.argv[0]:  analysis-classical-run.py )
+Arguments passed via the terminal:
+
+coronanet    dataset
+500    sample_size_train
+None    sample_size_corpus
+20000    sample_size_no_topic
+None    sample_size_test
+classical_ml    method
+log_reg    model
+tfidf    vectorizer
+20231026    study_date
+coronanet    task
+1    n_run
+6    n_random_runs_total
+random1    group_sample
+True    save_outputs
+continent    group_column
+448    max_length
+Iteration number:  0
+All random seeds:  [7270  860 5390 5191 5734 6265]
+Random seed for this run:  7270
+log_reg
+Dataset:  coronanet 
+
+Overall label distribution per group member:
+ continent                                          
+AF         Health Resources                             488
+           Restrictions of Mass Gatherings              295
+           Restriction and Regulation of Businesses     281
+           Public Awareness Measures                    243
+AS         Health Resources                            1406
+           Restriction and Regulation of Businesses    1007
+           Public Awareness Measures                    968
+           Restrictions of Mass Gatherings              857
+EU         Restriction and Regulation of Businesses    2362
+           Health Resources                            2175
+           Restrictions of Mass Gatherings             1386
+           Public Awareness Measures                    916
+NAM        Health Resources                             651
+           Restriction and Regulation of Businesses     563
+           Restrictions of Mass Gatherings              348
+           Public Awareness Measures                    283
+OC         Health Resources                             175
+           Restrictions of Mass Gatherings               90
+           Restriction and Regulation of Businesses      80
+           Public Awareness Measures                     74
+SA         Health Resources                             257
+           Restriction and Regulation of Businesses     165
+           Public Awareness Measures                    158
+           Restrictions of Mass Gatherings               98
+Name: label_text, dtype: int64
+Group selected: ['NAM']  for seed 7312
+Sample that might be imbalanced: df_train.label_text.value_counts:
+ Health Resources                            125
+Public Awareness Measures                   125
+Restriction and Regulation of Businesses    125
+Restrictions of Mass Gatherings             125
+Name: label_text, dtype: int64
+
+FINAL DF_TRAIN SAMPLE (BALANCED) for group \bNAM\b:
+df_train.label_text.value_counts:
+ Health Resources                            125
+Public Awareness Measures                   125
+Restriction and Regulation of Businesses    125
+Restrictions of Mass Gatherings             125
+Name: label_text, dtype: int64
+Spacy lemmatization done
+
+Train time: 0.07066202163696289 
+
+Aggregate metrics:  {'eval_f1_macro': 0.7118688816198238, 'eval_f1_micro': 0.721294363256785, 'eval_accuracy_balanced': 0.7235042372312304, 'eval_accuracy_not_b': 0.721294363256785, 'eval_precision_macro': 0.7169664864350189, 'eval_recall_macro': 0.7235042372312304, 'eval_precision_micro': 0.721294363256785, 'eval_recall_micro': 0.721294363256785}
+Detailed metrics:  {'Health Resources': {'precision': 0.8270042194092827, 'recall': 0.7608695652173914, 'f1-score': 0.7925596441568945, 'support': 1288}, 'Public Awareness Measures': {'precision': 0.5253549695740365, 'recall': 0.783661119515885, 'f1-score': 0.6290224650880388, 'support': 661}, 'Restriction and Regulation of Businesses': {'precision': 0.7967567567567567, 'recall': 0.6615798922800719, 'f1-score': 0.7229033840117706, 'support': 1114}, 'Restrictions of Mass Gatherings': {'precision': 0.71875, 'recall': 0.6879063719115734, 'f1-score': 0.7029900332225913, 'support': 769}, 'accuracy': 0.721294363256785, 'macro avg': {'precision': 0.7169664864350189, 'recall': 0.7235042372312304, 'f1-score': 0.7118688816198238, 'support': 3832}, 'weighted avg': {'precision': 0.7444537699672811, 'recall': 0.721294363256785, 'f1-score': 0.7261258811154904, 'support': 3832}} 
+
+
+Test results:
+{'eval_f1_macro': 0.7118688816198238, 'eval_f1_micro': 0.721294363256785, 'eval_accuracy_balanced': 0.7235042372312304, 'eval_accuracy_not_b': 0.721294363256785, 'eval_precision_macro': 0.7169664864350189, 'eval_recall_macro': 0.7235042372312304, 'eval_precision_micro': 0.721294363256785, 'eval_recall_micro': 0.721294363256785}
+
+Script done.
+
+
