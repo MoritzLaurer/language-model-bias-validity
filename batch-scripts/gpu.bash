@@ -20,11 +20,6 @@ pip install --upgrade pip
 pip3 install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cpu
 pip install -r requirements.txt
 
-# continent random1 fix - deletable
-#sbatch --output=./meta-metrics-repo/results/coronanet/logs/output_nli_biased.txt ./meta-metrics-repo/batch-scripts/gpu.bash "coronanet" "coronanet" "nli_short" "continent" "random1" 6
-#sbatch --output=./meta-metrics-repo/results/coronanet/logs/output_standard_biased.txt ./meta-metrics-repo/batch-scripts/gpu.bash "coronanet" "coronanet" "standard_dl" "continent" "random1" 6
-#sbatch --output=./meta-metrics-repo/results/coronanet/logs/output_nli_void_biased.txt ./meta-metrics-repo/batch-scripts/gpu.bash "coronanet" "coronanet" "nli_void" "continent" "random1" 6
-
 
 ## for snellius run with terminal variables
 # biased runs
