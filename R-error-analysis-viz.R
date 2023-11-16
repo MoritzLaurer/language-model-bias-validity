@@ -29,6 +29,11 @@ d = read_parquet("./results/df_test_concat.parquet.gzip") |>
 #  ungroup()  # Remove grouping
 
 
+m1 = glmer(error ~ -1 + classifier*biased_row + (1 | training_run), family=binomial, data=d)
+pred <- ggeffects::ggpredict(m1, terms = c("classifier", "biased_row")) |>
+  as_tibble() |>
+  mutate(intest=if_else(group==0, "Yes", "No"))
+
 
 get_plotdata = function(dataset) {
   m1 = glmer(error ~ -1 + classifier*biased_row + (1 | training_run), family=binomial, data=dataset)

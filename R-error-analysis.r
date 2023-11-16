@@ -20,10 +20,6 @@ d = read_parquet("./results/df_test_concat.parquet.gzip") |>
   mutate(training_run = file_name) 
   
 
-# TODO: check why:
-#coronanet - continent & year raise warning with glmr: boundary (singular) fit: see help('isSingular')
-#test <- d %>% filter(dataset %in% c("coronanet") & group_col %in% c("continent"))
-
 
 # The ordering here decides which method is the reference method
 # take BERT-NLI as reference category, since main argument in paper is about NLI.
