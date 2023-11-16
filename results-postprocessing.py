@@ -7,7 +7,7 @@ import gzip
 
 # choose classification metric for figure
 SEED_GLOBAL = 42
-DOWNSAMPLE_FOR_BALANCED_TEST = False
+DOWNSAMPLE_FOR_BALANCED_TEST = True
 SAVE_DATA_TEST = True
 
 
@@ -165,6 +165,9 @@ test_texts_per_group_member = test_texts_per_group_member.sort_values(["dataset"
 # .to_csv leads to unfixable loading issues. attempted fixes: change engine, utf-8, different delimitors, compression etc.
 # using parquet instead. no mixed types per column required by to_parquet:
 df_test_conat_final['group_members_test'] = df_test_conat_final['group_members_test'].astype(str)
+
+# remove text column to make files smaller to enable upload to github
+df_test_conat_final.drop(columns=["text_prepared"], inplace=True)
 
 if SAVE_DATA_TEST and DOWNSAMPLE_FOR_BALANCED_TEST:
     #df_test_conat_final.to_csv("./results/df_test_concat_downsampled.csv.gz", compression="gzip", index=False)
