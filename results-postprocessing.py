@@ -7,7 +7,7 @@ import gzip
 
 # choose classification metric for figure
 SEED_GLOBAL = 42
-DOWNSAMPLE_FOR_BALANCED_TEST = True
+DOWNSAMPLE_FOR_BALANCED_TEST = False
 SAVE_DATA_TEST = True
 
 

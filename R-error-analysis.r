@@ -28,7 +28,7 @@ d$classifier <- factor(as.factor(d$classifier), levels = c("BERT-NLI", "BERT-NLI
 
 ### single model without intercept
 m_single_nointercept = glmer(error ~ -1 + classifier + classifier:biased_row + (1 | training_run), family=binomial, data=d)
-tab_model(m_single_nointercept)
+tab_model(m_single_nointercept, show.se = T)
 summary(m_single_nointercept)
 plot_single_easier = plot_model(m_single_nointercept, type='pred', terms=c('classifier','biased_row'))
 plot_single_easier
